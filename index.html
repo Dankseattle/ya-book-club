@@ -19,20 +19,21 @@
         <h1 class="text-5xl font-extrabold tracking-tight text-slate-900 mb-2 italic uppercase">Ya Book Club</h1>
         <p class="text-slate-500 text-lg uppercase tracking-widest font-semibold">Official Library</p>
         
-        <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center items-center max-w-4xl mx-auto">
+        <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center items-center max-w-5xl mx-auto">
             <input type="text" id="searchInput" placeholder="Search title or author..." 
                 class="px-5 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-80 shadow-sm">
             
-            <div class="flex gap-2">
-                <button onclick="changeSort('order')" id="sortOrder" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition">Reading Order</button>
-                <button onclick="changeSort('title')" id="sortTitle" class="bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold transition hover:bg-slate-50">A-Z Title</button>
+            <div class="flex gap-2 flex-wrap justify-center">
+                <button onclick="changeSort('order')" id="sortOrder" class="bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold shadow-md transition">Reading Order</button>
+                <button onclick="changeSort('rank')" id="sortRank" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold transition hover:bg-slate-50">Consensus Rank</button>
+                <button onclick="changeSort('title')" id="sortTitle" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold transition hover:bg-slate-50">A-Z Title</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4">
         <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <div class="col-span-full text-center py-20 text-slate-400">Loading your collection...</div>
+            <div class="col-span-full text-center py-20 text-slate-400">Loading collection...</div>
         </div>
     </main>
 
@@ -46,22 +47,27 @@
             try {
                 const response = await fetch(CSV_URL);
                 const csvText = await response.text();
-                
-                // Parse CSV rows while handling quoted titles correctly
                 const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
                 allBooks = rows.slice(1).map((col, index) => {
+                    // Mapping based on Official Rankings Sheet 
                     const title = (col[1] || "").replace(/"/g, "").trim();
                     const author = (col[2] || "").replace(/"/g, "").trim();
-                    const consensusRank = (col[11] || "").replace(/"/g, "").trim() || "N/A";
+                    const consensusRank = parseInt(col[11]) || 999;
                     const readingOrder = parseInt(col[0]) || (index + 1); 
                     
-                    // Column AM is index 38. If empty, fall back to Column M (index 12)
-                    let imgPath = (col[38] || col[12] || "").replace(/"/g, "").trim();
+                    // Direct target for Column AM (Index 38)
+                    let imgPath = (col[38] || "").replace(/"/g, "").trim();
                     
+                    // Fallback scanner: find any Amazon image URL in the row if AM is empty
+                    if (!imgPath || !imgPath.includes('http')) {
+                        imgPath = col.find(c => c.includes('m.media-amazon.com')) || "";
+                        imgPath = imgPath.replace(/"/g, "").trim();
+                    }
+
                     let finalImg = "https://via.placeholder.com/300x450?text=No+Cover";
                     if (imgPath && imgPath.startsWith('http')) {
-                        // Using weserv to process the jpg and bypass security blocks
+                        // Proxy to bypass Amazon's hotlink protection
                         finalImg = `https://images.weserv.nl/?url=${encodeURIComponent(imgPath.replace(/^https?:\/\//, ''))}&w=400&fit=cover`;
                     }
 
@@ -70,15 +76,21 @@
 
                 renderBooks();
             } catch (e) {
-                console.error("Fetch Error:", e);
-                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500 font-bold">Error loading books from Spreadsheet.</p>`;
+                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500 font-bold">Error loading spreadsheet.</p>`;
             }
         }
 
         function changeSort(type) {
             currentSort = type;
-            document.getElementById('sortOrder').className = type === 'order' ? 'bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md' : 'bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold';
-            document.getElementById('sortTitle').className = type === 'title' ? 'bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md' : 'bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold';
+            const buttons = ['sortOrder', 'sortRank', 'sortTitle'];
+            buttons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (id === 'sort' + type.charAt(0).toUpperCase() + type.slice(1)) {
+                    btn.className = "bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold shadow-md transition";
+                } else {
+                    btn.className = "bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold transition hover:bg-slate-50";
+                }
+            });
             renderBooks();
         }
 
@@ -92,6 +104,8 @@
 
             if (currentSort === 'order') {
                 filtered.sort((a, b) => a.order - b.order);
+            } else if (currentSort === 'rank') {
+                filtered.sort((a, b) => a.rank - b.rank);
             } else {
                 filtered.sort((a, b) => a.title.localeCompare(b.title));
             }
