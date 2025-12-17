@@ -8,120 +8,106 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .book-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .book-card:hover { transform: translateY(-8px); shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .book-card { transition: all 0.3s ease; }
+        .book-card:hover { transform: translateY(-5px); }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
 
-    <header class="bg-white border-b border-slate-200 py-10 px-4 mb-8 shadow-sm">
-        <div class="max-w-6xl mx-auto text-center">
-            <h1 class="text-5xl font-extrabold tracking-tight text-slate-900 mb-2">Ya Book Club</h1>
-            <p class="text-slate-500 text-lg">The Official Rankings & Collection</p>
+    <header class="bg-white border-b border-slate-200 py-10 px-4 mb-8 shadow-sm text-center">
+        <h1 class="text-5xl font-extrabold tracking-tight text-slate-900 mb-2">Ya Book Club</h1>
+        <p class="text-slate-500 text-lg">The Official Rankings & Collection</p>
+        
+        <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center items-center max-w-4xl mx-auto">
+            <input type="text" id="searchInput" placeholder="Search title or author..." 
+                class="px-5 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-80 shadow-sm">
             
-            <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center items-center">
-                <input type="text" id="searchInput" placeholder="Search title or author..." 
-                    class="px-5 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-80 shadow-sm">
-                
-                <div class="flex gap-2">
-                    <button onclick="renderBooks('consensus')" class="bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition font-semibold shadow-md">Sort by Rank</button>
-                    <button onclick="renderBooks('title')" class="bg-white border border-slate-300 px-6 py-3 rounded-xl hover:bg-slate-50 transition font-semibold">A-Z</button>
-                </div>
+            <div class="flex gap-2">
+                <button onclick="changeSort('rank')" id="sortRank" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md active:scale-95 transition">Sort by Order</button>
+                <button onclick="changeSort('title')" id="sortTitle" class="bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold active:scale-95 transition">A-Z</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4">
         <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <div class="col-span-full text-center py-20">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                <p class="text-slate-400">Loading your library...</p>
-            </div>
+            <div class="col-span-full text-center py-20 text-slate-400">Loading your library...</div>
         </div>
     </main>
 
     <script>
         let allBooks = [];
+        let currentSort = 'rank';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
-        // We use the direct CSV export link which is more reliable for public access
+        // Using GID 0 for the first sheet tab
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
         async function loadData() {
             try {
                 const response = await fetch(CSV_URL);
                 const csvText = await response.text();
-                
-                // Parse CSV rows
-                const rows = csvText.split('\n').map(row => {
-                    // This regex handles commas inside quotes correctly
-                    return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                });
+                const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
-                // Skip the header row (index 0)
                 allBooks = rows.slice(1).map(col => {
-                    const rawImg = col[12]?.replace(/"/g, "").trim() || "";
-                    // Using a WSrv proxy to ensure Amazon images load correctly
-                    const proxiedImg = rawImg ? `https://images.weserv.nl/?url=${encodeURIComponent(rawImg.replace('https://', ''))}&w=300&h=450&fit=cover` : "https://via.placeholder.com/300x450?text=No+Cover";
+                    // Clean up data
+                    const title = (col[0] || "").replace(/"/g, "").trim();
+                    const author = (col[1] || "").replace(/"/g, "").trim();
+                    const rankVal = parseInt(col[11]) || 999;
+                    const rawImg = (col[12] || "").replace(/"/g, "").trim();
+                    
+                    // Proxy the image to bypass Amazon's block
+                    const imgUrl = rawImg ? `https://images.weserv.nl/?url=${encodeURIComponent(rawImg.replace('https://', ''))}&w=300` : "https://via.placeholder.com/300x450?text=No+Cover";
 
-                    return {
-                        title: col[0]?.replace(/"/g, "").trim() || "Untitled",
-                        author: col[1]?.replace(/"/g, "").trim() || "Unknown",
-                        rank: parseInt(col[11]) || 999,
-                        image: proxiedImg
-                    };
-                }).filter(b => b.title !== "Untitled" && b.title !== "");
+                    return { title, author, rank: rankVal, image: imgUrl };
+                }).filter(b => b.title !== "");
 
-                renderBooks('consensus');
+                renderBooks();
             } catch (e) {
-                console.error("Data Load Error:", e);
-                document.getElementById('book-container').innerHTML = `
-                    <div class="col-span-full text-center py-10">
-                        <p class="text-red-500 font-bold">Error loading data.</p>
-                        <p class="text-slate-500 text-sm mt-2">Make sure your Google Sheet is set to "Anyone with the link can view".</p>
-                    </div>`;
+                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500">Error loading data. Check Sheet sharing settings.</p>`;
             }
         }
 
-        function renderBooks(sortBy = 'consensus') {
+        function changeSort(type) {
+            currentSort = type;
+            // Visual toggle for buttons
+            document.getElementById('sortRank').className = type === 'rank' ? 'bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md' : 'bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold';
+            document.getElementById('sortTitle').className = type === 'title' ? 'bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold shadow-md' : 'bg-white border border-slate-300 px-6 py-3 rounded-xl font-semibold';
+            renderBooks();
+        }
+
+        function renderBooks() {
             const container = document.getElementById('book-container');
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const query = document.getElementById('searchInput').value.toLowerCase();
             
             let filtered = allBooks.filter(b => 
-                b.title.toLowerCase().includes(searchTerm) || 
-                b.author.toLowerCase().includes(searchTerm)
+                b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query)
             );
 
-            if (sortBy === 'consensus') filtered.sort((a, b) => a.rank - b.rank);
-            if (sortBy === 'title') filtered.sort((a, b) => a.title.localeCompare(b.title));
-
-            if (filtered.length === 0) {
-                container.innerHTML = `<p class="col-span-full text-center py-10 text-slate-400">No books found matching "${searchTerm}"</p>`;
-                return;
+            // Sorting logic
+            if (currentSort === 'rank') {
+                filtered.sort((a, b) => a.rank - b.rank);
+            } else {
+                filtered.sort((a, b) => a.title.localeCompare(b.title));
             }
 
             container.innerHTML = filtered.map(book => `
                 <div class="book-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                     <div class="aspect-[2/3] overflow-hidden bg-slate-100 relative">
-                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover" loading="lazy">
-                        <div class="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm">
-                            RANK #${book.rank}
+                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover">
+                        <div class="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">
+                            READING ORDER: ${book.rank}
                         </div>
                     </div>
-                    <div class="p-4 flex-grow flex flex-col justify-between">
-                        <div>
-                            <h3 class="font-bold text-sm leading-tight text-slate-800 line-clamp-2" title="${book.title}">${book.title}</h3>
-                            <p class="text-xs text-slate-500 mt-1 italic">${book.author}</p>
-                        </div>
+                    <div class="p-4 flex-grow">
+                        <h3 class="font-bold text-sm leading-tight text-slate-800 line-clamp-2">${book.title}</h3>
+                        <p class="text-xs text-slate-500 mt-1 italic">${book.author}</p>
                     </div>
                 </div>
             `).join('');
         }
 
-        // Listen for typing in search box
-        document.getElementById('searchInput').addEventListener('input', () => renderBooks('consensus'));
-        
-        // Initial Load
+        document.getElementById('searchInput').addEventListener('input', renderBooks);
         loadData();
     </script>
 </body>
