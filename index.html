@@ -20,7 +20,7 @@
         <h1 class="text-5xl font-black italic uppercase tracking-tighter mb-4">YA BOOK CLUB</h1>
         <div class="max-w-5xl mx-auto space-y-6">
             <div class="flex flex-col md:flex-row gap-3 justify-center">
-                <input type="text" id="searchInput" placeholder="Search books or authors..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="searchInput" placeholder="Search books..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
                 <div class="flex gap-2 justify-center">
                     <button onclick="setSort('order')" id="sort-order" class="btn-active bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition">ORDER</button>
                     <button onclick="setSort('rank')" id="sort-rank" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500">RANK</button>
@@ -47,41 +47,39 @@
         let filterGenre = 'All';
 
         const SPREADSHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
-        // We use the simpler CSV export to avoid "JSON Wrapper" errors
-        const DATA_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+        const DATA_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
 
         async function load() {
             try {
                 const res = await fetch(DATA_URL);
-                const csv = await res.text();
-                const lines = csv.split('\n').map(l => l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-                const headers = lines[0].map(h => h.replace(/"/g, '').trim());
+                const text = await res.text();
+                const json = JSON.parse(text.substring(47, text.length - 2));
+                const rows = json.table.rows;
 
-                // Find column indexes automatically
-                const iOrder = headers.indexOf("Order");
-                const iBook = headers.indexOf("Book");
-                const iAuthor = headers.indexOf("Author");
-                const iRank = headers.indexOf("Consensus");
-                const iGenre = headers.indexOf("Genre");
-                const iImage = headers.indexOf("Image");
-
-                allData = lines.slice(1).map(cols => {
-                    const rawImg = (cols[iImage] || "").replace(/"/g, "").trim();
-                    const cleanImg = rawImg ? `https://images.weserv.nl/?url=${encodeURIComponent(rawImg.replace(/^https?:\/\//, ''))}&w=400&fit=cover` : "https://via.placeholder.com/400x600?text=No+Cover";
+                allData = rows.map(r => {
+                    const d = r.c;
+                    // We check multiple possible columns for the image URL (L, M, or AM)
+                    const rawImg = d[38]?.v || d[12]?.v || d[11]?.v || ""; 
+                    
+                    // Proxy to bypass Amazon's block
+                    let finalImg = "https://via.placeholder.com/400x600?text=No+Cover";
+                    if (rawImg && rawImg.includes('http')) {
+                        finalImg = `https://wsrv.nl/?url=${encodeURIComponent(rawImg.replace(/^https?:\/\//, ''))}&w=400&output=jpg`;
+                    }
                     
                     return {
-                        order: parseInt(cols[iOrder]) || 0,
-                        title: (cols[iBook] || "").replace(/"/g, "").trim(),
-                        author: (cols[iAuthor] || "").replace(/"/g, "").trim(),
-                        rank: (cols[iRank] || "").replace(/"/g, "").trim() || "N/A",
-                        genre: (cols[iGenre] || "").replace(/"/g, "").trim() || "Other",
-                        image: cleanImg
+                        order: parseInt(d[0]?.v) || 0,
+                        title: d[1]?.v || "",
+                        author: d[2]?.v || "",
+                        rank: d[11]?.v || "N/A",
+                        genre: d[17]?.v || "Other",
+                        image: finalImg
                     };
                 }).filter(b => b.title !== "" && b.title !== "Book");
 
                 render();
             } catch (e) {
-                document.getElementById('grid').innerHTML = "Check Spreadsheet Permissions (Must be 'Anyone with the link can view').";
+                document.getElementById('grid').innerHTML = "Database Connection Error.";
             }
         }
 
@@ -92,7 +90,6 @@
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
 
-            // Button Highlight Logic
             ['order', 'rank', 'title'].forEach(id => document.getElementById('sort-'+id).className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500");
             ['All', 'Fiction', 'Non-Fiction'].forEach(id => document.getElementById('gen-'+id).className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-xs font-bold border transition" : "bg-white px-4 py-1.5 rounded-full text-xs font-bold border transition text-slate-500");
 
@@ -104,7 +101,7 @@
 
             container.innerHTML = items.map(b => `
                 <div class="book-card shadow-sm">
-                    <div class="aspect-[2/3] bg-slate-100">
+                    <div class="aspect-[2/3] bg-slate-200">
                         <img src="${b.image}" alt="${b.title}" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4 flex flex-col flex-grow">
