@@ -11,80 +11,101 @@
         .book-card { transition: all 0.3s ease; height: 100%; border-radius: 1rem; overflow: hidden; display: flex; flex-direction: column; }
         .book-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .filter-active { background-color: #0f172a; color: white; border-color: #0f172a; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
 
     <header class="bg-white border-b border-slate-200 py-10 px-4 mb-8 shadow-sm text-center">
-        <h1 class="text-5xl font-extrabold tracking-tight text-slate-900 mb-2 italic uppercase">Ya Book Club</h1>
-        <p class="text-slate-500 text-lg uppercase tracking-widest font-semibold">Official Library</p>
+        <h1 class="text-5xl font-extrabold tracking-tight text-slate-900 mb-2 italic uppercase tracking-tighter">Ya Book Club</h1>
         
-        <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center items-center max-w-5xl mx-auto">
-            <input type="text" id="searchInput" placeholder="Search title or author..." 
-                class="px-5 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-80 shadow-sm">
-            
-            <div class="flex gap-2 flex-wrap justify-center">
-                <button onclick="changeSort('order')" id="sortOrder" class="bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold shadow-md">Reading Order</button>
-                <button onclick="changeSort('rank')" id="sortRank" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50">Consensus Rank</button>
-                <button onclick="changeSort('title')" id="sortTitle" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50">A-Z Title</button>
+        <div class="mt-8 flex flex-col gap-6 max-w-5xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+                <input type="text" id="searchInput" placeholder="Search title or author..." 
+                    class="px-5 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-80 shadow-sm">
+                
+                <div class="flex gap-2 flex-wrap justify-center">
+                    <button onclick="changeSort('order')" id="sortOrder" class="filter-active px-5 py-3 rounded-xl font-semibold shadow-md transition">Reading Order</button>
+                    <button onclick="changeSort('rank')" id="sortRank" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition">Consensus Rank</button>
+                    <button onclick="changeSort('title')" id="sortTitle" class="bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition">A-Z Title</button>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-center border-t border-slate-100 pt-4">
+                <button onclick="setGenre('All')" id="genreAll" class="filter-active px-4 py-1.5 rounded-full text-xs font-bold border transition">All</button>
+                <button onclick="setGenre('Fiction')" id="genreFiction" class="bg-white px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-600 hover:bg-slate-50 transition">Fiction</button>
+                <button onclick="setGenre('Non-Fiction')" id="genreNonFiction" class="bg-white px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-600 hover:bg-slate-50 transition">Non-Fiction</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4">
         <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <div class="col-span-full text-center py-20 text-slate-400">Connecting to Live Database...</div>
+            <div class="col-span-full text-center py-20 text-slate-400 font-medium animate-pulse">Syncing library...</div>
         </div>
     </main>
 
     <script>
         let allBooks = [];
         let currentSort = 'order';
+        let currentGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
-        // Switching to the Visualization API for "Headless CMS" style access
         const JSON_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
         async function loadData() {
             try {
                 const response = await fetch(JSON_URL);
                 const text = await response.text();
-                // Google returns a JSON wrapper that we need to strip
                 const jsonData = JSON.parse(text.substring(47, text.length - 2));
                 const rows = jsonData.table.rows;
 
                 allBooks = rows.map(row => {
                     const c = row.c;
-                    // c[0] = Order, c[1] = Book, c[2] = Author, c[11] = Rank, c[17] = Genre, c[38] = Image
-                    const title = c[1]?.v || "";
-                    const author = c[2]?.v || "";
-                    const rank = c[11]?.v || "N/A";
-                    const order = parseInt(c[0]?.v) || 0;
-                    const genre = c[17]?.v || "";
-                    let imgPath = c[38]?.v || "";
-
+                    const rawImg = c[38]?.v || ""; // Column AM
+                    
+                    // We bypass Amazon's block by using the Weserv image proxy
                     let finalImg = "https://via.placeholder.com/300x450?text=No+Cover";
-                    if (imgPath && imgPath.includes('http')) {
-                        // Using a high-performance proxy to bypass Amazon's blocks
-                        const cleanUrl = imgPath.replace(/^https?:\/\//, '');
+                    if (rawImg && rawImg.includes('http')) {
+                        // Strip the protocol and encode for the proxy
+                        const cleanUrl = rawImg.replace(/^https?:\/\//, '');
                         finalImg = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&w=400&fit=cover`;
                     }
 
-                    return { title, author, rank, order, genre, image: finalImg };
+                    return {
+                        title: c[1]?.v || "Untitled",
+                        author: c[2]?.v || "Unknown Author",
+                        rank: c[11]?.v || "N/A",
+                        order: parseInt(c[0]?.v) || 0,
+                        genre: c[17]?.v || "Other",
+                        image: finalImg
+                    };
                 }).filter(b => b.title !== "" && b.title !== "Book");
 
                 renderBooks();
             } catch (e) {
-                console.error(e);
-                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500">Database connection error.</p>`;
+                console.error("Data Load Error:", e);
+                document.getElementById('book-container').innerHTML = `<p class="text-red-500">Could not connect to database.</p>`;
             }
+        }
+
+        function setGenre(genre) {
+            currentGenre = genre;
+            ['genreAll', 'genreFiction', 'genreNonFiction'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.className = id === 'genre' + genre.replace('-', '') 
+                    ? "filter-active px-4 py-1.5 rounded-full text-xs font-bold border transition shadow-sm" 
+                    : "bg-white px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-600 hover:bg-slate-50 transition";
+            });
+            renderBooks();
         }
 
         function changeSort(type) {
             currentSort = type;
             ['sortOrder', 'sortRank', 'sortTitle'].forEach(id => {
-                document.getElementById(id).className = id === 'sort' + type.charAt(0).toUpperCase() + type.slice(1) 
-                    ? "bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold shadow-md" 
-                    : "bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold";
+                const btn = document.getElementById(id);
+                btn.className = id === 'sort' + type.charAt(0).toUpperCase() + type.slice(1) 
+                    ? "filter-active px-5 py-3 rounded-xl font-semibold shadow-md transition" 
+                    : "bg-white border border-slate-300 px-5 py-3 rounded-xl font-semibold hover:bg-slate-50 transition";
             });
             renderBooks();
         }
@@ -92,7 +113,12 @@
         function renderBooks() {
             const container = document.getElementById('book-container');
             const query = document.getElementById('searchInput').value.toLowerCase();
-            let filtered = allBooks.filter(b => b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query));
+            
+            let filtered = allBooks.filter(b => {
+                const matchesSearch = b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query);
+                const matchesGenre = currentGenre === 'All' || b.genre === currentGenre;
+                return matchesSearch && matchesGenre;
+            });
 
             if (currentSort === 'order') filtered.sort((a, b) => a.order - b.order);
             else if (currentSort === 'rank') filtered.sort((a, b) => (parseInt(a.rank) || 999) - (parseInt(b.rank) || 999));
@@ -101,15 +127,15 @@
             container.innerHTML = filtered.map(book => `
                 <div class="book-card bg-white border border-slate-200 flex flex-col shadow-sm">
                     <div class="aspect-[2/3] overflow-hidden bg-slate-100">
-                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x450?text=Reload+Image'">
+                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover">
                     </div>
-                    <div class="p-4 flex-grow flex flex-col">
-                        <div class="mb-2 flex-grow">
+                    <div class="p-4 flex-grow flex flex-col justify-between">
+                        <div>
                             <h3 class="font-bold text-sm leading-tight text-slate-900 line-clamp-2 uppercase tracking-tight">${book.title}</h3>
-                            <p class="text-xs font-bold text-blue-600 mt-1 uppercase tracking-tighter">${book.author}</p>
+                            <p class="text-[10px] font-extrabold text-blue-600 mt-1 uppercase tracking-wider line-clamp-1">${book.author}</p>
                             <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded uppercase tracking-widest">${book.genre}</span>
                         </div>
-                        <div class="pt-3 border-t border-slate-50 grid grid-cols-2 items-end">
+                        <div class="pt-3 border-t border-slate-50 flex justify-between items-end mt-4">
                             <div>
                                 <span class="block text-[8px] uppercase font-black text-slate-400">Order</span>
                                 <span class="text-xs font-bold text-slate-700">${book.order}</span>
