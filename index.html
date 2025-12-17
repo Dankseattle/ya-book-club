@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .book-card { transition: all 0.3s ease; }
+        .book-card { transition: all 0.3s ease; height: 100%; }
         .book-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
@@ -46,33 +46,32 @@
             try {
                 const response = await fetch(CSV_URL);
                 const csvText = await response.text();
+                
+                // Parse CSV rows while respecting quotes
                 const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
                 allBooks = rows.slice(1).map((col, index) => {
                     const title = (col[0] || "").replace(/"/g, "").trim();
                     const author = (col[1] || "").replace(/"/g, "").trim();
-                    // Column L (index 11) = Consensus/Rank
-                    const rank = col[11] ? col[11].replace(/"/g, "").trim() : "N/A";
-                    // Reading Order is from the very first column (index 0)
-                    const readingOrder = parseInt(col[0]) || (index + 1); 
+                    const rank = (col[11] || "").replace(/"/g, "").trim() || "N/A";
+                    const orderValue = parseInt(col[0]) || (index + 1); 
                     
-                    // Column AM (index 38) for Images
-                    let rawImg = (col[38] || "").replace(/"/g, "").trim();
+                    // Logic to find the image: Check Col AM (38), then fallback to Col M (12)
+                    let imgPath = (col[38] || col[12] || "").replace(/"/g, "").trim();
                     
-                    // Proxy the image to bypass Amazon blocks
-                    let imgUrl = "https://via.placeholder.com/300x450?text=No+Cover";
-                    if (rawImg && rawImg.includes('http')) {
-                        const cleanUrl = rawImg.split('://')[1];
-                        imgUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&w=400&fit=cover`;
+                    let finalImg = "https://via.placeholder.com/300x450?text=No+Cover";
+                    if (imgPath && imgPath.startsWith('http')) {
+                        // Using a proxy to bypass Amazon hotlink protection
+                        finalImg = `https://images.weserv.nl/?url=${encodeURIComponent(imgPath.replace(/^https?:\/\//, ''))}&w=400&fit=cover`;
                     }
 
-                    return { title, author, rank, readingOrder, image: imgUrl };
+                    return { title, author, rank, orderValue, image: finalImg };
                 }).filter(b => b.title !== "" && b.title !== "Book");
 
                 renderBooks();
             } catch (e) {
-                console.error(e);
-                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500">Connection Error. Is the sheet public?</p>`;
+                console.error("Data Fetch Error:", e);
+                document.getElementById('book-container').innerHTML = `<p class="col-span-full text-center text-red-500">Error: Could not load data from Google Sheets.</p>`;
             }
         }
 
@@ -92,27 +91,30 @@
             );
 
             if (currentSort === 'order') {
-                filtered.sort((a, b) => a.readingOrder - b.readingOrder);
+                filtered.sort((a, b) => a.orderValue - b.orderValue);
             } else {
                 filtered.sort((a, b) => a.title.localeCompare(b.title));
             }
 
             container.innerHTML = filtered.map(book => `
-                <div class="book-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
-                    <div class="aspect-[2/3] overflow-hidden bg-slate-100 relative">
-                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x450?text=Image+Error'">
-                        <div class="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm shadow-md">
-                            READING ORDER: ${book.readingOrder}
-                        </div>
+                <div class="book-card bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
+                    <div class="aspect-[2/3] overflow-hidden bg-slate-100">
+                        <img src="${book.image}" alt="${book.title}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x450?text=Image+Not+Found'">
                     </div>
-                    <div class="p-4 flex-grow flex flex-col justify-between">
-                        <div>
-                            <h3 class="font-bold text-sm leading-tight text-slate-800 line-clamp-2">${book.title}</h3>
-                            <p class="text-xs font-medium text-blue-600 mt-1 uppercase tracking-wider">${book.author}</p>
+                    <div class="p-4 flex-grow flex flex-col">
+                        <div class="flex-grow">
+                            <h3 class="font-bold text-sm leading-tight text-slate-800 line-clamp-2" title="${book.title}">${book.title}</h3>
+                            <p class="text-xs font-semibold text-blue-600 mt-1 uppercase tracking-tight">${book.author}</p>
                         </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
-                            <span class="text-[10px] uppercase font-bold text-slate-400">Consensus Rank</span>
-                            <span class="text-sm font-black text-slate-900">#${book.rank}</span>
+                        <div class="mt-4 pt-3 border-t border-slate-50 flex flex-col gap-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-widest">Order</span>
+                                <span class="text-[10px] font-bold text-slate-700">${book.orderValue}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-widest">Rank</span>
+                                <span class="text-xs font-black text-slate-900">#${book.rank}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
