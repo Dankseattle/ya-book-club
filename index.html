@@ -17,28 +17,28 @@
 <body>
 
     <header class="bg-white border-b py-10 px-4 text-center">
-        <h1 class="text-5xl font-black italic uppercase tracking-tighter mb-4 text-slate-900">YA BOOK CLUB</h1>
+        <h1 class="text-5xl font-black italic uppercase tracking-tighter mb-2 text-slate-900 leading-none">YA BOOK CLUB</h1>
+        <p id="book-count" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">Connecting...</p>
+        
         <div class="max-w-5xl mx-auto space-y-6">
             <div class="flex flex-col md:flex-row gap-3 justify-center">
                 <input type="text" id="searchInput" placeholder="Search title or author..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
                 <div class="flex gap-2 justify-center">
-                    <button onclick="setSort('order')" id="sort-order" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition">ORDER</button>
-                    <button onclick="setSort('rank')" id="sort-rank" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500">RANK</button>
-                    <button onclick="setSort('title')" id="sort-title" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500">A-Z</button>
+                    <button onclick="setSort('order')" id="sort-order" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition uppercase text-xs">Order</button>
+                    <button onclick="setSort('rank')" id="sort-rank" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-xs">Rank</button>
+                    <button onclick="setSort('title')" id="sort-title" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-xs">A-Z</button>
                 </div>
             </div>
             <div class="flex gap-2 justify-center">
-                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-xs font-bold border transition">ALL</button>
-                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-xs font-bold border transition text-slate-500">FICTION</button>
-                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-xs font-bold border transition text-slate-500">NON-FICTION</button>
+                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition">ALL</button>
+                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">FICTION</button>
+                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">NON-FICTION</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-6">
-        <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <div class="col-span-full text-center py-20 text-slate-400 font-bold uppercase tracking-widest italic">Syncing with Google Sheets...</div>
-        </div>
+        <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"></div>
     </main>
 
     <script>
@@ -64,23 +64,17 @@
                     
                     // Column AM is index 38
                     let imgUrl = (col[38] || "").replace(/"/g, "").trim();
-
-                    let finalImg = "https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=No+Cover+Link";
                     
-                    if (imgUrl && imgUrl.includes('http')) {
-                        // Strip Amazon resizing junk to get raw source
-                        const rawAmazonUrl = imgUrl.replace(/\._AC_.*_\./, '.');
-                        // Use proxy to bypass Amazon block
-                        finalImg = `https://wsrv.nl/?url=${encodeURIComponent(rawAmazonUrl.replace(/^https?:\/\//, ''))}&w=400&output=jpg`;
-                    }
+                    // The "Google Proxy" trick
+                    let finalImg = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(imgUrl)}`;
                     
                     return { title, author, rank, order, genre, image: finalImg };
                 }).filter(b => b.title !== "" && b.title !== "Book");
 
+                document.getElementById('book-count').innerText = `${allData.length} Books in Collection`;
                 render();
             } catch (e) {
-                console.error(e);
-                document.getElementById('grid').innerHTML = "<div class='col-span-full text-center'>Error connecting to Spreadsheet.</div>";
+                document.getElementById('grid').innerHTML = "Error loading data.";
             }
         }
 
@@ -91,10 +85,10 @@
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
 
-            ['order', 'rank', 'title'].forEach(id => document.getElementById('sort-'+id).className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition uppercase" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition uppercase");
+            ['order', 'rank', 'title'].forEach(id => document.getElementById('sort-'+id).className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-xs" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-xs");
             ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
                 const btn = document.getElementById('gen-'+id);
-                if(btn) btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-xs font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-xs font-bold border transition text-slate-500 shadow-sm";
+                if(btn) btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm";
             });
 
             let items = allData.filter(b => (filterGenre === 'All' || b.genre === filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
@@ -105,22 +99,23 @@
 
             container.innerHTML = items.map(b => `
                 <div class="book-card shadow-sm">
-                    <div class="aspect-[2/3] bg-slate-200 overflow-hidden">
-                        <img src="${b.image}" alt="${b.title}" class="w-full h-full object-cover" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Image+Blocked';">
+                    <div class="aspect-[2/3] bg-slate-200 relative">
+                        <img src="${b.image}" alt="${b.title}" class="w-full h-full object-cover" 
+                             onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Image+Blocked';">
                     </div>
                     <div class="p-4 flex flex-col flex-grow">
                         <div class="flex-grow mb-4">
-                            <h3 class="font-black text-sm uppercase leading-tight line-clamp-2 text-slate-900">${b.title}</h3>
-                            <p class="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-wider">${b.author}</p>
-                            <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded uppercase tracking-widest">${b.genre}</span>
+                            <h3 class="font-black text-xs uppercase leading-tight line-clamp-2 text-slate-900">${b.title}</h3>
+                            <p class="text-[9px] font-bold text-blue-600 mt-1 uppercase tracking-wider">${b.author}</p>
+                            <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded uppercase tracking-widest">${b.genre}</span>
                         </div>
                         <div class="pt-3 border-t flex justify-between items-end">
                             <div class="text-left">
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Order</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase">Order</p>
                                 <p class="text-xs font-bold text-slate-700">${b.order}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Rank</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase">Rank</p>
                                 <p class="text-xs font-black italic text-slate-900">#${b.rank}</p>
                             </div>
                         </div>
