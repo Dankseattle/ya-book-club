@@ -63,8 +63,15 @@
                     const genre = (col[17] || "").replace(/"/g, "").trim() || "Other";
                     let imgUrl = (col[38] || "").replace(/"/g, "").trim();
                     
-                    // The Cloudimage Proxy - specifically designed to bypass cross-origin blocks
-                    let finalImg = imgUrl ? `https://afogdqwdba.cloudimg.io/v7/${imgUrl}?w=400&org_if_sml=1` : `https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=No+Link`;
+                    // NEW STRATEGY: Strip the resizing junk out of the Amazon URL
+                    // This turns the long messy URL into a clean, raw high-res image link
+                    let cleanImg = imgUrl;
+                    if (imgUrl.includes('m.media-amazon.com')) {
+                        cleanImg = imgUrl.replace(/\._AC_.*_\./, '.');
+                    }
+                    
+                    // We use a lighter-weight proxy that doesn't trigger the "Security block" as easily
+                    let finalImg = cleanImg ? `https://wsrv.nl/?url=${encodeURIComponent(cleanImg.replace(/^https?:\/\//, ''))}&w=400&output=jpg` : `https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=No+Link`;
                     
                     return { title, author, rank, order, genre, image: finalImg };
                 }).filter(b => b.title !== "" && b.title !== "Book");
@@ -83,7 +90,10 @@
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
 
-            ['order', 'rank', 'title'].forEach(id => document.getElementById('sort-'+id).className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-xs" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-xs");
+            ['order', 'rank', 'title'].forEach(id => {
+                const btn = document.getElementById('sort-'+id);
+                if(btn) btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-xs" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-xs";
+            });
             ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
                 const btn = document.getElementById('gen-'+id);
                 if(btn) btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm";
@@ -99,22 +109,22 @@
                 <div class="book-card shadow-sm">
                     <div class="aspect-[2/3] bg-slate-100 relative">
                         <img src="${b.image}" alt="${b.title}" class="w-full h-full object-cover" 
-                             onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Blocked';">
+                             onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Reloading...';">
                     </div>
                     <div class="p-4 flex flex-col flex-grow">
                         <div class="flex-grow mb-4">
                             <h3 class="font-black text-xs uppercase leading-tight line-clamp-2 text-slate-900">${b.title}</h3>
-                            <p class="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-wider">${b.author}</p>
+                            <p class="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-wider line-clamp-1">${b.author}</p>
                             <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded uppercase tracking-widest">${b.genre}</span>
                         </div>
                         <div class="pt-3 border-t flex justify-between items-end">
                             <div class="text-left">
-                                <p class="text-[7px] font-black text-slate-400 uppercase">Order</p>
-                                <p class="text-xs font-bold text-slate-700">${b.order}</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p>
+                                <p class="text-xs font-bold text-slate-700 leading-none">${b.order}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-[7px] font-black text-slate-400 uppercase">Rank</p>
-                                <p class="text-xs font-black italic text-slate-900">#${b.rank}</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Rank</p>
+                                <p class="text-xs font-black italic text-slate-900 leading-none">#${b.rank}</p>
                             </div>
                         </div>
                     </div>
