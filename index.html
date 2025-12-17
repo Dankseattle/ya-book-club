@@ -12,8 +12,6 @@
         .book-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
-        
-        /* Modal Styles */
         #modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 50; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
         #modal.active { display: flex; }
     </style>
@@ -22,15 +20,22 @@
 
     <header class="bg-white border-b py-10 px-4 text-center">
         <h1 class="text-5xl font-black italic uppercase tracking-tighter mb-2 text-slate-900 leading-none">YA BOOK CLUB</h1>
-        <p id="book-count" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 text-center">Syncing...</p>
+        <p id="book-count" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 text-center">Library Loaded</p>
         
-        <div class="max-w-5xl mx-auto space-y-6">
-            <div class="flex flex-col md:flex-row gap-3 justify-center">
+        <div class="max-w-5xl mx-auto space-y-4">
+            <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
                 <input type="text" id="searchInput" placeholder="Search title or author..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
-                <div class="flex gap-2 justify-center">
+                <div class="flex gap-2 flex-wrap justify-center">
                     <button onclick="setSort('order')" id="sort-order" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition uppercase text-xs">Order</button>
-                    <button onclick="setSort('rank')" id="sort-rank" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-xs">Rank</button>
                     <button onclick="setSort('title')" id="sort-title" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-xs">A-Z</button>
+                    <select id="rankSelector" onchange="setSort(this.value)" class="bg-white px-4 py-3 rounded-xl font-bold border shadow-sm text-slate-500 uppercase text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="rank">Consensus Rank</option>
+                        <option value="kirk">Kirk's Rank</option>
+                        <option value="huber">Huber's Rank</option>
+                        <option value="lattanzio">Lattanzio's Rank</option>
+                        <option value="walco">Walco's Rank</option>
+                        <option value="driscoll">Driscoll's Rank</option>
+                    </select>
                 </div>
             </div>
             <div class="flex gap-2 justify-center">
@@ -48,7 +53,6 @@
     <div id="modal" onclick="closeModal()">
         <div class="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
             <button onclick="closeModal()" class="absolute top-4 right-4 bg-slate-100 w-10 h-10 rounded-full flex items-center justify-center font-bold text-slate-500 hover:bg-slate-200">✕</button>
-            
             <div class="p-8">
                 <div class="flex gap-6 mb-8">
                     <div class="w-1/3 aspect-[2/3] bg-slate-100 rounded-xl overflow-hidden shadow-md">
@@ -58,34 +62,19 @@
                         <span id="modal-genre" class="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase tracking-widest mb-2"></span>
                         <h2 id="modal-title" class="text-2xl font-black uppercase leading-none text-slate-900 mb-1"></h2>
                         <p id="modal-author" class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4"></p>
-                        
                         <div class="flex gap-4">
-                            <div class="bg-slate-50 p-3 rounded-xl flex-1 text-center border border-slate-100">
-                                <p class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Order</p>
-                                <p id="modal-order" class="text-lg font-black text-slate-900"></p>
-                            </div>
-                            <div class="bg-slate-900 p-3 rounded-xl flex-1 text-center shadow-lg">
-                                <p class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Consensus</p>
-                                <p id="modal-consensus" class="text-lg font-black text-white italic"></p>
-                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl flex-1 text-center border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1">Order</p><p id="modal-order" class="text-lg font-black text-slate-900"></p></div>
+                            <div class="bg-slate-900 p-3 rounded-xl flex-1 text-center shadow-lg"><p class="text-[9px] font-black text-slate-400 uppercase mb-1">Consensus</p><p id="modal-consensus" class="text-lg font-black text-white italic"></p></div>
                         </div>
                     </div>
                 </div>
-
                 <h3 class="font-black text-xs uppercase tracking-[0.2em] text-slate-300 border-b pb-2 mb-4 text-center">Individual Rankings</h3>
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Kirk</p>
-                        <p id="rank-kirk" class="text-xl font-black text-slate-900">--</p>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Huber</p>
-                        <p id="rank-huber" class="text-xl font-black text-slate-900">--</p>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Latz</p>
-                        <p id="rank-latz" class="text-xl font-black text-slate-900">--</p>
-                    </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Kirk</p><p id="rank-kirk" class="text-lg font-black text-slate-900">--</p></div>
+                    <div class="bg-slate-50 p-3 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Huber</p><p id="rank-huber" class="text-lg font-black text-slate-900">--</p></div>
+                    <div class="bg-slate-50 p-3 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Lattanzio</p><p id="rank-lattanzio" class="text-lg font-black text-slate-900">--</p></div>
+                    <div class="bg-slate-50 p-3 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Walco</p><p id="rank-walco" class="text-lg font-black text-slate-900">--</p></div>
+                    <div class="bg-slate-50 p-3 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Driscoll</p><p id="rank-driscoll" class="text-lg font-black text-slate-900">--</p></div>
                 </div>
             </div>
         </div>
@@ -104,30 +93,35 @@
                 const res = await fetch(DATA_URL);
                 const csvText = await res.text();
                 const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-
+                
                 allData = rows.slice(1).map((col, index) => {
                     const order = parseInt(col[0]) || (index + 1);
                     return {
                         order: order,
                         title: (col[1] || "").replace(/"/g, "").trim(),
                         author: (col[2] || "").replace(/"/g, "").trim(),
-                        kirk: (col[8] || "").replace(/"/g, "").trim(),   // Column I
-                        huber: (col[9] || "").replace(/"/g, "").trim(),  // Column J
-                        latz: (col[10] || "").replace(/"/g, "").trim(),   // Column K
-                        rank: (col[11] || "").replace(/"/g, "").trim() || "N/A", // Column L
-                        genre: (col[17] || "").replace(/"/g, "").trim() || "Other",
+                        kirk: parseInt(col[3]) || 999,      // D
+                        huber: parseInt(col[4]) || 999,     // E
+                        lattanzio: parseInt(col[5]) || 999, // F
+                        walco: parseInt(col[6]) || 999,     // G
+                        driscoll: parseInt(col[7]) || 999,  // H
+                        rank: parseInt(col[11]) || 999,     // L (Consensus)
+                        genre: (col[17] || "").replace(/"/g, "").trim() || "Other", // R
                         image: `covers/${order}.jpg`
                     };
                 }).filter(b => b.title !== "" && b.title !== "Book");
-
                 document.getElementById('book-count').innerText = `${allData.length} Books in Collection`;
                 render();
             } catch (e) { console.error(e); }
         }
 
-        function setSort(s) { sortMode = s; render(); }
+        function setSort(s) { 
+            sortMode = s; 
+            document.getElementById('rankSelector').value = ['rank', 'kirk', 'huber', 'lattanzio', 'walco', 'driscoll'].includes(s) ? s : 'rank';
+            render(); 
+        }
         function setGenre(g) { filterGenre = g; render(); }
-
+        
         function openModal(index) {
             const b = allData.find(x => x.order === index);
             if(!b) return;
@@ -136,28 +130,34 @@
             document.getElementById('modal-author').innerText = b.author;
             document.getElementById('modal-genre').innerText = b.genre;
             document.getElementById('modal-order').innerText = b.order;
-            document.getElementById('modal-consensus').innerText = "#" + b.rank;
-            document.getElementById('rank-kirk').innerText = b.kirk || "--";
-            document.getElementById('rank-huber').innerText = b.huber || "--";
-            document.getElementById('rank-latz').innerText = b.latz || "--";
+            document.getElementById('modal-consensus').innerText = "#" + (b.rank === 999 ? "N/A" : b.rank);
+            document.getElementById('rank-kirk').innerText = b.kirk === 999 ? "--" : b.kirk;
+            document.getElementById('rank-huber').innerText = b.huber === 999 ? "--" : b.huber;
+            document.getElementById('rank-lattanzio').innerText = b.lattanzio === 999 ? "--" : b.lattanzio;
+            document.getElementById('rank-walco').innerText = b.walco === 999 ? "--" : b.walco;
+            document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
             document.getElementById('modal').classList.add('active');
         }
-
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
 
         function render() {
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
 
-            ['order', 'rank', 'title'].forEach(id => {
+            ['order', 'title'].forEach(id => {
                 const btn = document.getElementById('sort-'+id);
-                btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-xs" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-xs";
+                if(btn) btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-xs" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-xs";
+            });
+            ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
+                const btn = document.getElementById('gen-'+id);
+                if(btn) btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm";
             });
 
             let items = allData.filter(b => (filterGenre === 'All' || b.genre === filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
+            
             if (sortMode === 'order') items.sort((a,b) => a.order - b.order);
-            else if (sortMode === 'rank') items.sort((a,b) => (parseInt(a.rank) || 999) - (parseInt(b.rank) || 999));
-            else items.sort((a,b) => a.title.localeCompare(b.title));
+            else if (sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
+            else items.sort((a,b) => a[sortMode] - b[sortMode]);
 
             container.innerHTML = items.map(b => `
                 <div class="book-card shadow-sm" onclick="openModal(${b.order})">
@@ -173,11 +173,11 @@
                         <div class="pt-3 border-t flex justify-between items-end">
                             <div class="text-left">
                                 <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p>
-                                <p class="text-xs font-bold text-slate-700">${b.order}</p>
+                                <p class="text-xs font-bold text-slate-700 leading-none">${b.order}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Rank</p>
-                                <p class="text-xs font-black italic text-slate-900">#${b.rank}</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase leading-none">${sortMode === 'rank' ? 'Consensus' : sortMode.toUpperCase()}</p>
+                                <p class="text-xs font-black italic text-slate-900 leading-none">#${b[sortMode] === 999 ? 'N/A' : b[sortMode]}</p>
                             </div>
                         </div>
                     </div>
