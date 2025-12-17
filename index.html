@@ -61,12 +61,10 @@
                     const rank = (col[11] || "").replace(/"/g, "").trim() || "N/A";
                     const order = parseInt(col[0]) || (index + 1);
                     const genre = (col[17] || "").replace(/"/g, "").trim() || "Other";
-                    
-                    // Column AM is index 38
                     let imgUrl = (col[38] || "").replace(/"/g, "").trim();
                     
-                    // The "Google Proxy" trick
-                    let finalImg = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(imgUrl)}`;
+                    // The Cloudimage Proxy - specifically designed to bypass cross-origin blocks
+                    let finalImg = imgUrl ? `https://afogdqwdba.cloudimg.io/v7/${imgUrl}?w=400&org_if_sml=1` : `https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=No+Link`;
                     
                     return { title, author, rank, order, genre, image: finalImg };
                 }).filter(b => b.title !== "" && b.title !== "Book");
@@ -99,14 +97,14 @@
 
             container.innerHTML = items.map(b => `
                 <div class="book-card shadow-sm">
-                    <div class="aspect-[2/3] bg-slate-200 relative">
+                    <div class="aspect-[2/3] bg-slate-100 relative">
                         <img src="${b.image}" alt="${b.title}" class="w-full h-full object-cover" 
-                             onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Image+Blocked';">
+                             onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=Blocked';">
                     </div>
                     <div class="p-4 flex flex-col flex-grow">
                         <div class="flex-grow mb-4">
                             <h3 class="font-black text-xs uppercase leading-tight line-clamp-2 text-slate-900">${b.title}</h3>
-                            <p class="text-[9px] font-bold text-blue-600 mt-1 uppercase tracking-wider">${b.author}</p>
+                            <p class="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-wider">${b.author}</p>
                             <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded uppercase tracking-widest">${b.genre}</span>
                         </div>
                         <div class="pt-3 border-t flex justify-between items-end">
