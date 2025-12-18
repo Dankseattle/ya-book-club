@@ -159,7 +159,7 @@
 
             // Sort logic
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
-            else if(sortMode === 'order') items.sort((a,b) => b.id - a.id);
+            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id); // Fixed: Ascending Order (1 -> End)
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
             else { 
                 const mIdx = memberIds.indexOf(sortMode);
