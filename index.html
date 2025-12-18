@@ -3,114 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Book Club</title>
+    <title>YA Book Club</title>
     <link rel="icon" type="image/png" href="clublogo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .stats-bar { background: #ffffff; border-bottom: 1px solid #e2e8f0; }
-        .sticky-header { position: sticky; top: 40px; z-index: 40; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
-        .book-card { transition: all 0.3s ease; border-radius: 1.25rem; display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid #e2e8f0; background: white; cursor: pointer; position: relative; }
-        .book-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.1); }
-        .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; } /* Changed to black for better contrast */
-        #modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 50; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(8px); }
-        #modal.active { display: flex; }
-        .top-ten { border: 2px solid #fbbf24 !important; }
-        .crop-square { width: 100%; height: 100%; object-fit: cover; object-position: center; }
-        .hidden-section { display: none !important; }
-        .genre-tag { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.9); padding: 2px 8px; border-radius: 6px; font-size: 7px; font-weight: 900; text-transform: uppercase; color: #2563eb; letter-spacing: 0.05em; z-index: 10; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        
+        /* Sticky Header */
+        .sticky-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
         
         /* Nav Animation */
-        .nav-link { position: relative; transition: color 0.3s ease; }
-        .nav-link::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: #2563eb; transition: width 0.3s ease; }
-        .nav-link.active { color: #0f172a; }
-        .nav-link.active::after { width: 100%; }
+        .nav-container { position: relative; display: flex; gap: 2rem; }
+        .nav-item { position: relative; cursor: pointer; padding-bottom: 0.5rem; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8; transition: color 0.3s; }
+        .nav-item.active { color: #0f172a; }
+        .nav-indicator { position: absolute; bottom: 0; left: 0; height: 2px; background-color: #2563eb; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 0; }
 
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.3); }
-            70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
-        .reading-pulse { animation: pulse-border 2s infinite; border: 2px solid #2563eb !important; }
+        /* Card Styling */
+        .book-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; }
+        .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
+        
+        /* Badges */
+        .genre-pill { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .rank-badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 99px; font-size: 9px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .badge-gold { background: #fbbf24; color: black; } /* Top 10 Group */
+        .badge-blue { background: #2563eb; color: white; } /* Top 5 Personal */
+
+        /* Utilities */
+        .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
+        .hidden-section { display: none !important; }
+
+        /* Modal */
+        #modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        #modal.active { display: flex; }
     </style>
 </head>
 <body>
 
-    <div class="stats-bar py-2 px-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center text-[9px] font-bold uppercase tracking-widest">
-            <div class="flex gap-6 items-center">
-                <span class="text-slate-400">Books <span id="stat-count" class="text-slate-900 ml-1">—</span></span>
-                <span class="text-slate-400">Pages <span id="stat-pages" class="text-slate-900 ml-1">—</span></span>
-                <span class="text-slate-400">Time <span id="stat-mins" class="text-slate-900 ml-1">—</span></span>
+    <header class="sticky-header pt-6 pb-4 px-4">
+        <div class="max-w-7xl mx-auto flex flex-col items-center">
+            <img src="clublogo.png" class="h-12 w-auto mb-6" onerror="this.style.display='none'">
+            
+            <div class="nav-container mb-6">
+                <div id="nav-lib" class="nav-item active" onclick="switchTab('library')">The Library</div>
+                <div id="nav-com" class="nav-item" onclick="switchTab('committee')">The Committee</div>
+                <div id="nav-line" class="nav-indicator"></div>
             </div>
-            <div class="hidden sm:flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span><span class="text-slate-400">CLUB ANALYTICS</span></div>
-        </div>
-    </div>
 
-    <header class="bg-white pt-8 pb-6 px-4 text-center sticky-header">
-        <div class="flex justify-center mb-6">
-            <img src="clublogo.png" alt="YA BOOK CLUB" class="h-14 md:h-16 w-auto object-contain">
-        </div>
-        <div class="flex justify-center gap-8 mb-8">
-            <button onclick="showSection('library')" id="nav-library" class="nav-link active text-[10px] font-black uppercase tracking-[0.2em]">The Library</button>
-            <button onclick="showSection('about')" id="nav-about" class="nav-link text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">The Committee</button>
-        </div>
-        
-        <div id="library-controls" class="max-w-4xl mx-auto space-y-4 px-4 transition-all duration-300">
-            <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
-                <input type="text" id="searchInput" placeholder="Search library..." class="px-5 py-2.5 border border-slate-200 rounded-xl w-full md:w-72 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                <div class="flex gap-2 flex-wrap justify-center">
-                    <button onclick="setSort('rank')" id="sort-rank" class="btn-active px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-[10px] uppercase shadow-sm">Rank</button>
-                    <button onclick="setSort('order')" id="sort-order" class="bg-white px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-slate-500 text-[10px] uppercase shadow-sm">Order</button>
-                    <button onclick="setSort('title')" id="sort-title" class="bg-white px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-slate-500 text-[10px] uppercase shadow-sm">A-Z</button>
-                    <select id="rankSelector" onchange="setSort(this.value)" class="bg-white px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-slate-500 text-[10px] uppercase shadow-sm outline-none cursor-pointer">
-                        <option value="" disabled selected>By Member</option>
-                        <option value="kirk">Kirk</option>
-                        <option value="huber">Huber</option>
-                        <option value="lattanzio">Lattanzio</option>
-                        <option value="walco">Walco</option>
-                        <option value="driscoll">Driscoll</option>
-                    </select>
+            <div id="library-controls" class="w-full max-w-4xl transition-all duration-300">
+                <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
+                    <input type="text" id="searchInput" placeholder="Search..." class="px-4 py-2 border rounded-full w-full md:w-64 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
+                    <div class="flex gap-2 flex-wrap justify-center">
+                        <button onclick="setSort('rank')" id="btn-rank" class="btn-active px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500">Rank</button>
+                        <button onclick="setSort('order')" id="btn-order" class="px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500">Order</button>
+                        <button onclick="setSort('title')" id="btn-title" class="px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500">A-Z</button>
+                        <select id="memberSelect" onchange="setSort(this.value)" class="px-4 py-2 rounded-full border text-[10px] font-bold uppercase bg-white text-slate-500 outline-none cursor-pointer hover:bg-slate-50">
+                            <option value="" disabled selected>By Member</option>
+                            <option value="kirk">Kirk</option>
+                            <option value="huber">Huber</option>
+                            <option value="lattanzio">Lattanzio</option>
+                            <option value="walco">Walco</option>
+                            <option value="driscoll">Driscoll</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <div class="flex gap-2 justify-center">
-                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-[9px] font-black border border-slate-200 transition shadow-sm">ALL</button>
-                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[9px] font-black border border-slate-200 transition text-slate-400 shadow-sm">FICTION</button>
-                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[9px] font-black border border-slate-200 transition text-slate-400 shadow-sm">NON-FICTION</button>
+                <div class="flex gap-2 justify-center mt-3">
+                    <button onclick="setGenre('All')" id="gen-All" class="btn-active px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition">All</button>
+                    <button onclick="setGenre('Fiction')" id="gen-Fiction" class="px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition bg-white text-slate-400">Fiction</button>
+                    <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition bg-white text-slate-400">Non-Fiction</button>
+                </div>
             </div>
         </div>
     </header>
 
-    <main id="library-section" class="max-w-7xl mx-auto p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div id="feature-reading"></div>
-            <div id="feature-next"></div>
+    <main class="max-w-7xl mx-auto p-6 min-h-screen">
+        <div id="section-library">
+            <div class="flex justify-between items-end border-b pb-4 mb-8">
+                <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Full Collection</h2>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><span id="count-display" class="text-slate-900">0</span> Books</p>
+            </div>
+            <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5"></div>
         </div>
-        <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5"></div>
-    </main>
 
-    <main id="about-section" class="max-w-6xl mx-auto p-6 hidden-section">
-        <div class="mb-12">
-            <h2 class="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 text-center italic">Deep Club Intelligence</h2>
-            <div id="insights-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="section-committee" class="hidden-section">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div id="insight-1"></div>
+                <div id="insight-2"></div>
+                <div id="insight-3"></div>
+            </div>
+            <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-4">Member Profiles</h2>
+            <div id="member-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
         </div>
-        <div id="member-profiles" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
     </main>
 
     <div id="modal" onclick="closeModal()">
-        <div id="modal-content" class="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
-            <button onclick="closeModal()" class="absolute top-6 right-6 bg-slate-100 w-10 h-10 rounded-full flex items-center justify-center font-bold text-slate-500 hover:bg-slate-200 z-10">✕</button>
-            <div class="p-8">
-                <div class="flex flex-col items-center text-center mb-6">
-                    <div class="w-48 h-48 bg-slate-50 rounded-2xl overflow-hidden shadow-lg mb-4"><img id="modal-img" src="" class="crop-square"></div>
-                    <span id="modal-genre" class="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black rounded-full uppercase tracking-widest mb-2"></span>
-                    <h2 id="modal-title" class="text-2xl font-black uppercase leading-tight text-slate-900 mb-1"></h2>
-                    <p id="modal-author" class="text-sm font-bold text-slate-400 uppercase tracking-widest"></p>
-                </div>
-                <div id="modal-stats" class="grid grid-cols-2 gap-3 mb-6"></div>
-                <div id="modal-ranks" class="grid grid-cols-5 gap-2"></div>
+        <div id="modal-content" class="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl relative p-8 text-center" onclick="event.stopPropagation()">
+            <img id="m-img" class="w-32 h-32 mx-auto rounded-lg shadow-md mb-4 object-cover">
+            <h2 id="m-title" class="text-xl font-black uppercase leading-tight mb-1"></h2>
+            <p id="m-author" class="text-xs font-bold text-slate-400 uppercase mb-4"></p>
+            <div class="flex justify-center gap-4 mb-6">
+                <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Rank</p><p id="m-rank" class="text-lg font-black text-blue-600">#1</p></div>
+                <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Pages</p><p id="m-pages" class="text-lg font-black text-slate-800">320</p></div>
             </div>
+            <div id="m-scores" class="grid grid-cols-5 gap-1"></div>
         </div>
     </div>
 
@@ -119,174 +116,181 @@
         let sortMode = 'rank';
         let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
-        const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
-        const members = [{id:'kirk', name:'Kirk'},{id:'huber', name:'Huber'},{id:'lattanzio', name:'Lattanzio'},{id:'walco', name:'Walco'},{id:'driscoll', name:'Driscoll'}];
-
-        function formatTime(totalMins) {
-            if (!totalMins) return "N/A";
-            const h = Math.floor(totalMins/60), m = totalMins%60;
-            return h > 0 ? `${h}h ${m}m` : `${m}m`;
-        }
+        const members = [{id:'kirk',n:'Kirk'},{id:'huber',n:'Huber'},{id:'lattanzio',n:'Lat'},{id:'walco',n:'Walco'},{id:'driscoll',n:'Dris'}];
+        const memberIds = ['kirk','huber','lattanzio','walco','driscoll'];
 
         async function load() {
-            try {
-                const res = await fetch(DATA_URL);
-                const csvText = await res.text();
-                const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-                let totalP = 0, totalM = 0, completed = 0;
+            const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`);
+            const txt = await res.text();
+            allData = txt.split('\n').slice(1).map((r, i) => {
+                const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const rRaw = (c[11]||"").replace(/"/g,"").trim();
+                return {
+                    id: parseInt(c[0])||(i+1),
+                    title: (c[1]||"").replace(/"/g,""),
+                    author: (c[2]||"").replace(/"/g,""),
+                    rank: rRaw && rRaw!=='N/A' ? parseInt(rRaw) : 999,
+                    genre: (c[17]||"Other").replace(/"/g,""),
+                    pages: parseInt((c[39]||"0").replace(/\D/g,"")),
+                    img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
+                    selector: (c[16]||"").replace(/"/g,""),
+                    scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999, parseInt(c[7])||999]
+                };
+            }).filter(b => b.title && b.title !== "Book");
 
-                allData = rows.slice(1).map((col, index) => {
-                    const order = parseInt(col[0]) || (index + 1);
-                    const rankRaw = (col[11] || "").replace(/"/g, "").trim();
-                    const hasRank = rankRaw !== "" && rankRaw !== "N/A";
-                    const pg = parseInt((col[39]||"").replace(/\D/g,"")) || 0;
-                    const ln = parseInt((col[40]||"").replace(/\D/g,"")) || 0;
-                    if (hasRank) { totalP += pg; totalM += ln; completed++; }
-
-                    return {
-                        order, title: (col[1]||"").replace(/"/g, ""), author: (col[2]||"").replace(/"/g, ""),
-                        kirk: parseInt(col[3])||999, huber: parseInt(col[4])||999, lattanzio: parseInt(col[5])||999,
-                        walco: parseInt(col[6])||999, driscoll: parseInt(col[7])||999, rank: hasRank ? parseInt(rankRaw) : 999,
-                        selector: (col[16]||"").replace(/"/g, "").trim(), genre: (col[17]||"").replace(/"/g, "").trim() || "Other",
-                        pages: pg, length: ln, status: (col[41]||"").trim().toLowerCase(), image: `covers/${order}.jpg`
-                    };
-                }).filter(b => b.title && (b.rank !== 999 || b.status));
-
-                document.getElementById('stat-count').innerText = completed;
-                document.getElementById('stat-pages').innerText = totalP.toLocaleString();
-                document.getElementById('stat-mins').innerText = formatTime(totalM);
-                
-                runDeepIntelligence();
-                renderFeatures();
-                render();
-            } catch (e) { console.error(e); }
+            document.getElementById('count-display').innerText = allData.length;
+            renderLibrary();
+            renderCommittee();
+            updateNavUI();
         }
 
-        function runDeepIntelligence() {
-            const insights = [];
-            const rankedOnly = allData.filter(b => b.rank !== 999);
-            if (rankedOnly.length === 0) return;
+        function renderLibrary() {
+            const grid = document.getElementById('grid');
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            
+            // Filter
+            let items = allData.filter(b => 
+                (filterGenre === 'All' || b.genre === filterGenre) &&
+                (b.title.toLowerCase().includes(term) || b.author.toLowerCase().includes(term))
+            );
 
-            // 1. Taste Twins
-            let bestPair = {p1:'', p2:'', score: 1000};
-            for (let i=0; i<members.length; i++) {
-                for (let j=i+1; j<members.length; j++) {
-                    let diffSum = 0, count = 0;
-                    rankedOnly.forEach(b => {
-                        if(b[members[i].id] !== 999 && b[members[j].id] !== 999) { diffSum += Math.abs(b[members[i].id] - b[members[j].id]); count++; }
-                    });
-                    const avg = diffSum / (count || 1);
-                    if(count > 0 && avg < bestPair.score) bestPair = {p1:members[i].name, p2:members[j].name, score: avg};
-                }
+            // Sort
+            if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
+            else if(sortMode === 'order') items.sort((a,b) => b.id - a.id);
+            else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
+            else { 
+                const mIdx = memberIds.indexOf(sortMode);
+                items.sort((a,b) => a.scores[mIdx] - b.scores[mIdx]);
             }
-            insights.push({title: 'Taste Twins', val: bestPair.p1 ? `${bestPair.p1} & ${bestPair.p2}` : 'None', desc: 'Statistically the most similar tastes.', icon: '🤝'});
 
-            // 2. Genre Dominance
-            const genreCounts = rankedOnly.reduce((acc, b) => { acc[b.genre] = (acc[b.genre] || 0) + 1; return acc; }, {});
-            const topGenre = Object.entries(genreCounts).sort((a,b) => b[1] - a[1])[0];
-            insights.push({title: 'Genre Dominance', val: topGenre ? topGenre[0] : 'None', desc: `This category makes up ${Math.round((topGenre[1]/rankedOnly.length)*100)}% of the library.`, icon: '🎡'});
+            // Draw
+            grid.innerHTML = items.map(b => {
+                // Determine Label Logic
+                let displayRank = b.rank === 999 ? '-' : `#${b.rank}`;
+                let displayLabel = 'Consensus';
+                let badgeHTML = '';
 
-            // 3. The Sweet Spot
-            const ranges = {short: {s:0, c:0}, mid: {s:0, c:0}, long: {s:0, c:0}};
-            rankedOnly.forEach(b => {
-                let r = b.pages <= 300 ? 'short' : b.pages <= 450 ? 'mid' : 'long';
-                ranges[r].s += b.rank; ranges[r].c++;
-            });
-            let bestRange = Object.entries(ranges).filter(r => r[1].c > 0).sort((a,b) => (a[1].s/a[1].c) - (b[1].s/b[1].c))[0];
-            const labels = {short:'< 300 pgs', mid:'300-450 pgs', long:'> 450 pgs'};
-            insights.push({title: 'The Sweet Spot', val: bestRange ? labels[bestRange[0]] : 'N/A', desc: 'The page count range with the highest average score.', icon: '📏'});
+                // If Sorting by a Member
+                if (memberIds.includes(sortMode)) {
+                    const mIdx = memberIds.indexOf(sortMode);
+                    const score = b.scores[mIdx];
+                    displayRank = score === 999 ? '-' : `#${score}`;
+                    displayLabel = sortMode.toUpperCase();
+                    // Personal Top 5 Badge
+                    if(score <= 5) badgeHTML = `<div class="rank-badge badge-blue">TOP 5</div>`;
+                } else {
+                    // Global Top 10 Badge
+                    if(b.rank <= 10) badgeHTML = `<div class="rank-badge badge-gold">TOP 10</div>`;
+                }
 
-            document.getElementById('insights-grid').innerHTML = insights.map(i => `
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center md:text-left">
-                    <div class="text-2xl mb-2">${i.icon}</div>
-                    <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest">${i.title}</p>
-                    <h3 class="text-xl font-black uppercase italic my-1">${i.val}</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">${i.desc}</p>
-                </div>
-            `).join('');
+                return `
+                <div class="book-card" onclick="openModal(${b.id})">
+                    <div class="aspect-square bg-slate-100 overflow-hidden relative">
+                        <img src="${b.img}" class="crop-square" onerror="this.src='https://placehold.jp/30/e2e8f0/94a3b8/400x400.png?text=Cover'">
+                        <div class="genre-pill">${b.genre}</div>
+                        ${badgeHTML}
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-black text-[10px] uppercase leading-tight line-clamp-2 mb-1">${b.title}</h3>
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">${displayLabel}</span>
+                            <span class="text-[10px] font-black text-slate-900">${displayRank}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
 
-            document.getElementById('member-profiles').innerHTML = members.map(m => {
-                const readCount = rankedOnly.filter(b => b[m.id] !== 999).length;
-                const top5 = rankedOnly.filter(b => b[m.id] <= 5).sort((a,b)=>a[m.id]-b[m.id]).slice(0,5);
-                return `<div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-2xl font-black uppercase italic">${m.name}</h3>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 mb-6">Ranked ${readCount} Books</p>
+            updateButtons();
+        }
+
+        function renderCommittee() {
+            // Insights
+            const ranked = allData.filter(b => b.rank !== 999);
+            const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
+            const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
+            document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Dominant Genre</p><p class="text-2xl font-black text-slate-900 mt-1">${topG[0]}</p><p class="text-xs text-slate-500 mt-1">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
+
+            const short = ranked.filter(b=>b.pages<350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages<350).length;
+            const long = ranked.filter(b=>b.pages>=350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages>=350).length;
+            document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Sweet Spot</p><p class="text-2xl font-black text-slate-900 mt-1">${short < long ? "< 350 Pages" : "350+ Pages"}</p><p class="text-xs text-slate-500 mt-1">Highest rated length</p></div>`;
+
+            document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Total Read</p><p class="text-2xl font-black text-slate-900 mt-1">${ranked.length}</p><p class="text-xs text-slate-500 mt-1">Books Ranked</p></div>`;
+
+            // Member Profiles
+            document.getElementById('member-grid').innerHTML = members.map((m, i) => {
+                const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
+                return `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-black uppercase italic">${m.n}</h3>
+                        <span class="text-[9px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">${myPicks.length} Picks</span>
+                    </div>
                     <div class="grid grid-cols-5 gap-2">
-                        ${top5.map(b => `<img src="${b.image}" class="aspect-square rounded-lg object-cover cursor-pointer hover:scale-105 transition" onclick="openModal(${b.order})">`).join('')}
+                        ${allData.filter(b=>b.scores[i]<=5).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5).map(b => 
+                            `<img src="${b.img}" class="rounded-md object-cover w-full h-auto border aspect-square" onclick="openModal(${b.id})">`
+                        ).join('')}
                     </div>
                 </div>`;
             }).join('');
         }
 
-        function renderFeatures() {
-            const rd = allData.find(b => b.status === 'reading'), nx = allData.find(b => b.status === 'next');
-            if(rd) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2">Reading Now</div><div class="bg-white p-5 rounded-[2rem] border-2 border-blue-600 flex items-center gap-4 reading-pulse cursor-pointer" onclick="openModal(${rd.order})"><img src="${rd.image}" class="w-16 h-16 rounded-xl object-cover"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900">${rd.title}</h3><p class="text-[10px] text-slate-400 uppercase font-bold">${rd.author}</p></div></div>`;
-            if(nx) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-4 opacity-70 cursor-pointer" onclick="openModal(${nx.order})"><img src="${nx.image}" class="w-16 h-16 rounded-xl object-cover grayscale"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-500">${nx.title}</h3><p class="text-[10px] text-slate-300 uppercase font-bold">${nx.author}</p></div></div>`;
-        }
-
-        function showSection(s) {
-            const isLib = s === 'library';
-            document.getElementById('library-section').classList.toggle('hidden-section', !isLib);
-            document.getElementById('library-controls').classList.toggle('hidden-section', !isLib);
-            document.getElementById('about-section').classList.toggle('hidden-section', isLib);
+        function switchTab(tab) {
+            const isLib = tab === 'library';
+            document.getElementById('section-library').classList.toggle('hidden-section', !isLib);
+            document.getElementById('section-committee').classList.toggle('hidden-section', isLib);
             
-            document.getElementById('nav-library').classList.toggle('active', isLib);
-            document.getElementById('nav-about').classList.toggle('active', !isLib);
-            document.getElementById('nav-library').classList.toggle('text-slate-400', !isLib);
-            document.getElementById('nav-about').classList.toggle('text-slate-400', isLib);
+            const controls = document.getElementById('library-controls');
+            if (!isLib) { controls.style.opacity = '0'; controls.style.pointerEvents = 'none'; setTimeout(() => controls.classList.add('hidden-section'), 300); } 
+            else { controls.classList.remove('hidden-section'); setTimeout(() => { controls.style.opacity = '1'; controls.style.pointerEvents = 'auto'; }, 10); }
+
+            document.getElementById('nav-lib').classList.toggle('active', isLib);
+            document.getElementById('nav-com').classList.toggle('active', !isLib);
+            updateNavUI();
         }
 
+        function updateNavUI() {
+            const active = document.querySelector('.nav-item.active');
+            const line = document.getElementById('nav-line');
+            if(active && line) { line.style.width = `${active.offsetWidth}px`; line.style.left = `${active.offsetLeft}px`; }
+        }
+
+        function updateButtons() {
+            ['rank','order','title'].forEach(id => {
+                const btn = document.getElementById('btn-'+id);
+                btn.className = sortMode === id ? "btn-active px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition shadow-md" : "px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500 hover:bg-slate-50";
+            });
+            ['All','Fiction','Non-Fiction'].forEach(id => {
+                const btn = document.getElementById('gen-'+id);
+                btn.className = filterGenre === id ? "btn-active px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition shadow-md" : "px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition bg-white text-slate-400 hover:bg-slate-50";
+            });
+            const dd = document.getElementById('memberSelect');
+            if(memberIds.includes(sortMode)) dd.classList.add('bg-slate-900', 'text-white');
+            else { dd.classList.remove('bg-slate-900', 'text-white'); dd.value = ""; }
+        }
+
+        function setSort(s) { sortMode = s; renderLibrary(); }
+        function setGenre(g) { filterGenre = g; renderLibrary(); }
+        
         function openModal(id) {
-            const b = allData.find(x => x.order === id); if(!b) return;
-            document.getElementById('modal-img').src = b.image;
-            document.getElementById('modal-title').innerText = b.title;
-            document.getElementById('modal-author').innerText = b.author;
-            document.getElementById('modal-genre').innerText = b.genre;
-            document.getElementById('modal-stats').innerHTML = `
-                <div class="bg-slate-50 p-3 rounded-xl text-center"><p class="text-[8px] font-black uppercase text-slate-400">Pages</p><p class="text-xs font-black">${b.pages}</p></div>
-                <div class="bg-slate-900 p-3 rounded-xl text-center text-white"><p class="text-[8px] font-black uppercase text-slate-400">Consensus</p><p class="text-xs font-black italic">#${b.rank===999?'N/A':b.rank}</p></div>
-            `;
-            document.getElementById('modal-ranks').innerHTML = members.map(m => `
-                <div class="bg-white p-2 rounded-lg border text-center"><p class="text-[7px] font-bold text-slate-400 uppercase">${m.name}</p><p class="text-xs font-black">${b[m.id]===999?'--':b[m.id]}</p></div>
+            const b = allData.find(x => x.id === id);
+            document.getElementById('m-img').src = b.img;
+            document.getElementById('m-title').innerText = b.title;
+            document.getElementById('m-author').innerText = b.author;
+            document.getElementById('m-rank').innerText = b.rank === 999 ? 'NR' : '#'+b.rank;
+            document.getElementById('m-pages').innerText = b.pages;
+            
+            document.getElementById('m-scores').innerHTML = members.map((m,i) => `
+                <div class="bg-slate-50 p-1 rounded text-center border">
+                    <div class="text-[6px] font-bold uppercase text-slate-400">${m.n.substr(0,3)}</div>
+                    <div class="text-[10px] font-black">${b.scores[i]===999?'-':b.scores[i]}</div>
+                </div>
             `).join('');
             document.getElementById('modal').classList.add('active');
         }
-
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
-        function setSort(s) { sortMode = s; if(['rank','order','title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
-        function setGenre(g) { filterGenre = g; render(); }
-
-        function render() {
-            const grid = document.getElementById('grid');
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            
-            // Re-added Logic to Animate (Color) the buttons
-            ['rank', 'order', 'title'].forEach(id => {
-                const btn = document.getElementById('sort-'+id);
-                const isActive = sortMode === id;
-                btn.className = isActive ? "btn-active px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-[10px] uppercase shadow-sm" : "bg-white px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-slate-500 text-[10px] uppercase shadow-sm";
-            });
-            ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
-                const btn = document.getElementById('gen-'+id);
-                const isActive = filterGenre === id;
-                btn.className = isActive ? "btn-active px-4 py-1.5 rounded-full text-[9px] font-black border border-slate-200 transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[9px] font-black border border-slate-200 transition text-slate-400 shadow-sm";
-            });
-
-            let items = allData.filter(b => (filterGenre==='All' || b.genre===filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
-            if(sortMode==='order') items.sort((a,b)=>a.order-b.order); else if(sortMode==='title') items.sort((a,b)=>a.title.localeCompare(b.title)); else items.sort((a,b)=>a[sortMode]-b[sortMode]);
-
-            grid.innerHTML = items.map(b => `
-                <div class="book-card" onclick="openModal(${b.order})">
-                    <div class="genre-tag">${b.genre}</div>
-                    <div class="aspect-square overflow-hidden"><img src="${b.image}" class="crop-square" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=${b.order}';"></div>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <div class="flex-grow mb-3"><h3 class="font-black text-[10px] uppercase leading-tight line-clamp-2">${b.title}</h3><p class="text-[8px] font-bold text-blue-600 uppercase mt-1">${b.author}</p></div>
-                        <div class="flex justify-between items-end border-t pt-2"><p class="text-[9px] font-black text-slate-900 italic">#${b.rank===999?'N/A':b.rank}</p><p class="text-[8px] font-bold text-slate-300">ORD ${b.order}</p></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-        document.getElementById('searchInput').addEventListener('input', render);
+        
+        document.getElementById('searchInput').addEventListener('input', renderLibrary);
+        window.addEventListener('resize', updateNavUI);
         load();
     </script>
 </body>
