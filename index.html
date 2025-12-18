@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ya Book Club</title>
-    
     <link rel="icon" type="image/png" href="clublogo.png">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -36,7 +34,7 @@
             <div class="flex gap-6">
                 <span class="text-slate-400">Read: <span id="stat-count" class="text-white">—</span></span>
                 <span class="text-slate-400">Total Pgs: <span id="stat-pages" class="text-white">—</span></span>
-                <span class="text-slate-400">Total Mins: <span id="stat-mins" class="text-white">—</span></span>
+                <span class="text-slate-400">Total Time: <span id="stat-mins" class="text-white">—</span></span>
             </div>
             <span class="text-amber-400 hidden md:block italic">Official Ranking Database</span>
         </div>
@@ -55,7 +53,7 @@
         
         <div id="controls" class="max-w-5xl mx-auto space-y-4">
             <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
-                <input type="text" id="searchInput" placeholder="Search title or author..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <input type="text" id="searchInput" placeholder="Search library..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <div class="flex gap-2 flex-wrap justify-center">
                     <button onclick="setSort('rank')" id="sort-rank" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm uppercase text-[10px]">Rank</button>
                     <button onclick="setSort('order')" id="sort-order" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 uppercase text-[10px]">Order</button>
@@ -71,9 +69,9 @@
                 </div>
             </div>
             <div class="flex gap-2 justify-center">
-                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition">ALL</button>
-                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">FICTION</button>
-                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">NON-FICTION</button>
+                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm">ALL</button>
+                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm">FICTION</button>
+                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm">NON-FICTION</button>
             </div>
         </div>
     </header>
@@ -130,6 +128,14 @@
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
+        // Conversion Logic: Minutes to H/M
+        function formatTime(totalMins) {
+            if (!totalMins || totalMins === 0) return "N/A";
+            const h = Math.floor(totalMins / 60);
+            const m = totalMins % 60;
+            return h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+
         async function load() {
             try {
                 const res = await fetch(DATA_URL);
@@ -163,7 +169,8 @@
 
                 document.getElementById('stat-count').innerText = completedCount;
                 document.getElementById('stat-pages').innerText = totalP.toLocaleString();
-                document.getElementById('stat-mins').innerText = totalM.toLocaleString();
+                document.getElementById('stat-mins').innerText = formatTime(totalM); // Formatted for Stats Bar
+                
                 renderFeatures();
                 renderAbout();
                 render();
@@ -194,20 +201,30 @@
             document.getElementById('nav-about').className = section === 'about' ? "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
         }
 
-        function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
-        function setGenre(g) { filterGenre = g; render(); }
-
         function openModal(index) {
             const b = allData.find(x => x.order === index); if(!b) return;
             const mc = document.getElementById('modal-content'); const cb = document.getElementById('consensus-box');
             if (b.rank <= 10 && b.rank > 0) { mc.classList.add('top-ten'); cb.style.backgroundColor = '#fbbf24'; } else { mc.classList.remove('top-ten'); cb.style.backgroundColor = '#0f172a'; }
-            document.getElementById('modal-img').src = b.image; document.getElementById('modal-title').innerText = b.title; document.getElementById('modal-author').innerText = b.author; document.getElementById('modal-genre').innerText = b.genre; document.getElementById('modal-order').innerText = b.order;
-            document.getElementById('modal-consensus').innerText = "#" + (b.rank === 999 ? "N/A" : b.rank); document.getElementById('modal-pages').innerText = b.pages + " pgs"; document.getElementById('modal-length').innerText = b.length + " mins";
-            document.getElementById('rank-kirk').innerText = b.kirk === 999 ? "--" : b.kirk; document.getElementById('rank-huber').innerText = b.huber === 999 ? "--" : b.huber; document.getElementById('rank-lattanzio').innerText = b.lattanzio === 999 ? "--" : b.lattanzio; document.getElementById('rank-walco').innerText = b.walco === 999 ? "--" : b.walco; document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
+            document.getElementById('modal-img').src = b.image; 
+            document.getElementById('modal-title').innerText = b.title; 
+            document.getElementById('modal-author').innerText = b.author; 
+            document.getElementById('modal-genre').innerText = b.genre; 
+            document.getElementById('modal-order').innerText = b.order;
+            document.getElementById('modal-consensus').innerText = "#" + (b.rank === 999 ? "N/A" : b.rank); 
+            document.getElementById('modal-pages').innerText = b.pages > 0 ? b.pages + " pgs" : "N/A";
+            document.getElementById('modal-length').innerText = formatTime(b.length); // Formatted for Modal
+            
+            document.getElementById('rank-kirk').innerText = b.kirk === 999 ? "--" : b.kirk; 
+            document.getElementById('rank-huber').innerText = b.huber === 999 ? "--" : b.huber; 
+            document.getElementById('rank-lattanzio').innerText = b.lattanzio === 999 ? "--" : b.lattanzio; 
+            document.getElementById('rank-walco').innerText = b.walco === 999 ? "--" : b.walco; 
+            document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
             document.getElementById('modal').classList.add('active');
         }
 
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
+        function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
+        function setGenre(g) { filterGenre = g; render(); }
 
         function render() {
             const container = document.getElementById('grid');
