@@ -20,16 +20,19 @@
         .nav-indicator { position: absolute; bottom: 0; left: 0; height: 2px; background-color: #2563eb; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 0; }
 
         /* Card Styling */
-        .book-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; }
+        .book-card { 
+            background: white; border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden; 
+            transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative;
+            display: flex; flex-direction: column;
+        }
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
         /* Badges */
         .genre-pill { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        
         .rank-badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 99px; font-size: 9px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .badge-gold { background: #fbbf24; color: black; } /* Top 10 Group */
-        .badge-blue { background: #2563eb; color: white; } /* Top 5 Personal */
+        .badge-gold { background: #fbbf24; color: black; } 
+        .badge-blue { background: #2563eb; color: white; }
 
         /* Utilities */
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
@@ -154,7 +157,7 @@
                 (b.title.toLowerCase().includes(term) || b.author.toLowerCase().includes(term))
             );
 
-            // Sort
+            // Sort logic
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
             else if(sortMode === 'order') items.sort((a,b) => b.id - a.id);
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
@@ -165,21 +168,18 @@
 
             // Draw
             grid.innerHTML = items.map(b => {
-                // Determine Label Logic
                 let displayRank = b.rank === 999 ? '-' : `#${b.rank}`;
                 let displayLabel = 'Consensus';
                 let badgeHTML = '';
 
-                // If Sorting by a Member
+                // Dynamic Logic
                 if (memberIds.includes(sortMode)) {
                     const mIdx = memberIds.indexOf(sortMode);
                     const score = b.scores[mIdx];
                     displayRank = score === 999 ? '-' : `#${score}`;
                     displayLabel = sortMode.toUpperCase();
-                    // Personal Top 5 Badge
                     if(score <= 5) badgeHTML = `<div class="rank-badge badge-blue">TOP 5</div>`;
                 } else {
-                    // Global Top 10 Badge
                     if(b.rank <= 10) badgeHTML = `<div class="rank-badge badge-gold">TOP 10</div>`;
                 }
 
@@ -190,11 +190,20 @@
                         <div class="genre-pill">${b.genre}</div>
                         ${badgeHTML}
                     </div>
-                    <div class="p-4">
-                        <h3 class="font-black text-[10px] uppercase leading-tight line-clamp-2 mb-1">${b.title}</h3>
-                        <div class="flex justify-between items-center mt-2 pt-2 border-t">
-                            <span class="text-[9px] font-bold text-slate-400 uppercase">${displayLabel}</span>
-                            <span class="text-[10px] font-black text-slate-900">${displayRank}</span>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <div class="mb-3">
+                            <h3 class="font-black text-[11px] uppercase leading-tight line-clamp-2">${b.title}</h3>
+                            <p class="text-[9px] font-bold text-blue-600 uppercase mt-1 truncate">${b.author}</p>
+                        </div>
+                        <div class="flex justify-between items-end border-t pt-2 mt-auto">
+                            <div class="text-left">
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">${displayLabel}</p>
+                                <p class="text-[10px] font-bold text-slate-700 leading-none">${displayRank}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[7px] font-black text-slate-400 uppercase leading-none">Order</p>
+                                <p class="text-[10px] font-black italic">${b.id}</p>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -204,19 +213,21 @@
         }
 
         function renderCommittee() {
-            // Insights
             const ranked = allData.filter(b => b.rank !== 999);
+            
+            // Insight 1: Genre
             const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
             const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
             document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Dominant Genre</p><p class="text-2xl font-black text-slate-900 mt-1">${topG[0]}</p><p class="text-xs text-slate-500 mt-1">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
+            // Insight 2: Sweet Spot
             const short = ranked.filter(b=>b.pages<350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages<350).length;
             const long = ranked.filter(b=>b.pages>=350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages>=350).length;
             document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Sweet Spot</p><p class="text-2xl font-black text-slate-900 mt-1">${short < long ? "< 350 Pages" : "350+ Pages"}</p><p class="text-xs text-slate-500 mt-1">Highest rated length</p></div>`;
 
+            // Insight 3: Total
             document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Total Read</p><p class="text-2xl font-black text-slate-900 mt-1">${ranked.length}</p><p class="text-xs text-slate-500 mt-1">Books Ranked</p></div>`;
 
-            // Member Profiles
             document.getElementById('member-grid').innerHTML = members.map((m, i) => {
                 const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
                 return `
