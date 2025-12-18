@@ -31,7 +31,7 @@
     <div class="bg-slate-900 text-white py-3 px-4 overflow-x-auto shadow-inner">
         <div class="max-w-7xl mx-auto flex justify-between items-center gap-8 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
             <div class="flex gap-6">
-                <span class="text-slate-400">Books Completed: <span id="stat-count" class="text-white">—</span></span>
+                <span class="text-slate-400">Read: <span id="stat-count" class="text-white">—</span></span>
                 <span class="text-slate-400">Total Pgs: <span id="stat-pages" class="text-white">—</span></span>
                 <span class="text-slate-400">Total Mins: <span id="stat-mins" class="text-white">—</span></span>
             </div>
@@ -64,6 +64,11 @@
                     </select>
                 </div>
             </div>
+            <div class="flex gap-2 justify-center">
+                <button onclick="setGenre('All')" id="gen-All" class="btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition">ALL</button>
+                <button onclick="setGenre('Fiction')" id="gen-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">FICTION</button>
+                <button onclick="setGenre('Non-Fiction')" id="gen-Non-Fiction" class="bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500">NON-FICTION</button>
+            </div>
         </div>
     </header>
 
@@ -80,13 +85,7 @@
     </main>
 
     <main id="about-section" class="max-w-5xl mx-auto p-6 hidden-section">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-black uppercase italic tracking-tight mb-4 text-slate-900">The Selection Committee</h2>
-            <p class="text-slate-500 max-w-2xl mx-auto">Five readers with distinct tastes, working toward a single consensus.</p>
-        </div>
-        
-        <div id="member-profiles" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            </div>
+        <div id="member-profiles" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
     </main>
 
     <div id="modal" onclick="closeModal()">
@@ -121,6 +120,7 @@
     <script>
         let allData = [];
         let sortMode = 'rank';
+        let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
@@ -129,98 +129,45 @@
                 const res = await fetch(DATA_URL);
                 const csvText = await res.text();
                 const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-                
                 let totalP = 0, totalM = 0, completedCount = 0;
-
                 allData = rows.slice(1).map((col, index) => {
                     const order = parseInt(col[0]) || (index + 1);
                     const rankRaw = (col[11] || "").replace(/"/g, "").trim();
-                    const status = (col[41] || "").trim().toLowerCase();
                     const hasRank = rankRaw !== "" && rankRaw !== "N/A";
                     const pgVal = parseInt((col[39] || "").replace(/[^0-9]/g, "")) || 0;
                     const minVal = parseInt((col[40] || "").replace(/[^0-9]/g, "")) || 0;
-                    
                     if (hasRank) { totalP += pgVal; totalM += minVal; completedCount++; }
-
                     return {
                         order: order, title: (col[1] || "").replace(/"/g, "").trim(), author: (col[2] || "").replace(/"/g, "").trim(),
                         kirk: parseInt(col[3]) || 999, huber: parseInt(col[4]) || 999, lattanzio: parseInt(col[5]) || 999,
                         walco: parseInt(col[6]) || 999, driscoll: parseInt(col[7]) || 999, rank: hasRank ? parseInt(rankRaw) : 999,
                         genre: (col[17] || "").replace(/"/g, "").trim() || "Other",
-                        pages: pgVal, length: minVal, status: status, image: `covers/${order}.jpg`, isVisible: hasRank || status !== ""
+                        pages: pgVal, length: minVal, status: (col[41] || "").trim().toLowerCase(), image: `covers/${order}.jpg`, isVisible: hasRank || (col[41] || "").trim() !== ""
                     };
                 }).filter(b => b.title !== "" && b.title !== "Book" && b.isVisible);
-
                 document.getElementById('stat-count').innerText = completedCount;
                 document.getElementById('stat-pages').innerText = totalP.toLocaleString();
                 document.getElementById('stat-mins').innerText = totalM.toLocaleString();
-
                 renderFeatures();
                 renderAbout();
                 render();
             } catch (e) { console.error(e); }
         }
 
-        function renderAbout() {
-            const members = [
-                { id: 'kirk', name: 'Kirk' },
-                { id: 'huber', name: 'Huber' },
-                { id: 'lattanzio', name: 'Lattanzio' },
-                { id: 'walco', name: 'Walco' },
-                { id: 'driscoll', name: 'Driscoll' }
-            ];
-
-            const container = document.getElementById('member-profiles');
-            container.innerHTML = members.map(m => {
-                const readCount = allData.filter(b => b[m.id] !== 999).length;
-                const top5 = allData.filter(b => b[m.id] >= 1 && b[m.id] <= 5).sort((a,b) => a[m.id] - b[m.id]);
-
-                return `
-                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="text-2xl font-black uppercase italic">${m.name}</h3>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Books Read: ${readCount}</p>
-                            </div>
-                        </div>
-                        
-                        <p class="text-[9px] font-black uppercase text-slate-300 mb-3 tracking-widest">Personal Top 5</p>
-                        <div class="grid grid-cols-5 gap-2">
-                            ${top5.map(b => `
-                                <div class="aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm group relative cursor-pointer" onclick="openModal(${b.order})">
-                                    <img src="${b.image}" class="crop-square">
-                                    <div class="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition p-1">
-                                        <span class="text-[10px] font-black text-white italic">#${b[m.id]}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
         function renderFeatures() {
             const reading = allData.find(b => b.status === 'reading');
             const next = allData.find(b => b.status === 'next');
-            if (reading) {
-                document.getElementById('feature-reading').innerHTML = `
-                <div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.2em] ml-1 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span> Currently Reading
-                </div>
-                <div class="bg-blue-50 p-5 rounded-[2rem] border border-blue-100 flex items-center gap-5 cursor-pointer hover:shadow-md transition reading-pulse" onclick="openModal(${reading.order})">
-                    <img src="${reading.image}" class="w-24 h-24 rounded-2xl object-cover shadow-sm">
-                    <div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1">${reading.title}</h3><p class="text-xs font-bold text-slate-500 uppercase">${reading.author}</p></div>
-                </div>`;
-            }
-            if (next) {
-                document.getElementById('feature-next').innerHTML = `
-                <div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.2em] ml-1">Up Next</div>
-                <div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-5 cursor-pointer hover:shadow-md transition" onclick="openModal(${next.order})">
-                    <img src="${next.image}" class="w-24 h-24 rounded-2xl object-cover grayscale opacity-60">
-                    <div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1 text-slate-500">${next.title}</h3><p class="text-xs font-bold text-slate-300 uppercase">${next.author}</p></div>
-                </div>`;
-            }
+            if (reading) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.2em] ml-1 flex items-center gap-2"><span class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span> Currently Reading</div><div class="bg-blue-50 p-5 rounded-[2rem] border border-blue-100 flex items-center gap-5 cursor-pointer reading-pulse" onclick="openModal(${reading.order})"><img src="${reading.image}" class="w-24 h-24 rounded-2xl object-cover shadow-sm"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1">${reading.title}</h3><p class="text-xs font-bold text-slate-500 uppercase">${reading.author}</p></div></div>`;
+            if (next) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.2em] ml-1 text-left">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-5 cursor-pointer" onclick="openModal(${next.order})"><img src="${next.image}" class="w-24 h-24 rounded-2xl object-cover grayscale opacity-60"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1 text-slate-500">${next.title}</h3><p class="text-xs font-bold text-slate-300 uppercase">${next.author}</p></div></div>`;
+        }
+
+        function renderAbout() {
+            const members = [{ id: 'kirk', name: 'Kirk' }, { id: 'huber', name: 'Huber' }, { id: 'lattanzio', name: 'Lattanzio' }, { id: 'walco', name: 'Walco' }, { id: 'driscoll', name: 'Driscoll' }];
+            document.getElementById('member-profiles').innerHTML = members.map(m => {
+                const readCount = allData.filter(b => b[m.id] !== 999).length;
+                const top5 = allData.filter(b => b[m.id] >= 1 && b[m.id] <= 5).sort((a,b) => a[m.id] - b[m.id]);
+                return `<div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col"><div class="mb-6"><h3 class="text-2xl font-black uppercase italic">${m.name}</h3><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Books Read: ${readCount}</p></div><p class="text-[9px] font-black uppercase text-slate-300 mb-3 tracking-widest">Personal Top 5</p><div class="grid grid-cols-5 gap-2">${top5.map(b => `<div class="aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm group relative cursor-pointer" onclick="openModal(${b.order})"><img src="${b.image}" class="crop-square"><div class="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition p-1 text-white text-[10px] font-black italic">#${b[m.id]}</div></div>`).join('')}</div></div>`;
+            }).join('');
         }
 
         function showSection(section) {
@@ -231,37 +178,39 @@
             document.getElementById('nav-about').className = section === 'about' ? "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
         }
 
+        function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
+        function setGenre(g) { filterGenre = g; render(); }
+
         function openModal(index) {
-            const b = allData.find(x => x.order === index);
-            if(!b) return;
-            const mc = document.getElementById('modal-content');
-            const cb = document.getElementById('consensus-box');
-            if (b.rank <= 10 && b.rank > 0) { mc.classList.add('top-ten'); cb.style.backgroundColor = '#fbbf24'; } 
-            else { mc.classList.remove('top-ten'); cb.style.backgroundColor = '#0f172a'; }
-            document.getElementById('modal-img').src = b.image;
-            document.getElementById('modal-title').innerText = b.title;
-            document.getElementById('modal-author').innerText = b.author;
-            document.getElementById('modal-genre').innerText = b.genre;
-            document.getElementById('modal-order').innerText = b.order;
-            document.getElementById('modal-consensus').innerText = "#" + (b.rank === 999 ? "N/A" : b.rank);
-            document.getElementById('modal-pages').innerText = b.pages + " pgs";
-            document.getElementById('modal-length').innerText = b.length + " mins";
-            document.getElementById('rank-kirk').innerText = b.kirk === 999 ? "--" : b.kirk;
-            document.getElementById('rank-huber').innerText = b.huber === 999 ? "--" : b.huber;
-            document.getElementById('rank-lattanzio').innerText = b.lattanzio === 999 ? "--" : b.lattanzio;
-            document.getElementById('rank-walco').innerText = b.walco === 999 ? "--" : b.walco;
-            document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
+            const b = allData.find(x => x.order === index); if(!b) return;
+            const mc = document.getElementById('modal-content'); const cb = document.getElementById('consensus-box');
+            if (b.rank <= 10 && b.rank > 0) { mc.classList.add('top-ten'); cb.style.backgroundColor = '#fbbf24'; } else { mc.classList.remove('top-ten'); cb.style.backgroundColor = '#0f172a'; }
+            document.getElementById('modal-img').src = b.image; document.getElementById('modal-title').innerText = b.title; document.getElementById('modal-author').innerText = b.author; document.getElementById('modal-genre').innerText = b.genre; document.getElementById('modal-order').innerText = b.order;
+            document.getElementById('modal-consensus').innerText = "#" + (b.rank === 999 ? "N/A" : b.rank); document.getElementById('modal-pages').innerText = b.pages + " pgs"; document.getElementById('modal-length').innerText = b.length + " mins";
+            document.getElementById('rank-kirk').innerText = b.kirk === 999 ? "--" : b.kirk; document.getElementById('rank-huber').innerText = b.huber === 999 ? "--" : b.huber; document.getElementById('rank-lattanzio').innerText = b.lattanzio === 999 ? "--" : b.lattanzio; document.getElementById('rank-walco').innerText = b.walco === 999 ? "--" : b.walco; document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
             document.getElementById('modal').classList.add('active');
         }
 
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
-        function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
 
         function render() {
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
-            let items = allData.filter(b => b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search));
+            
+            // Highlighting Sort Buttons
+            ['rank', 'order', 'title'].forEach(id => {
+                const btn = document.getElementById('sort-'+id);
+                btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-[10px]" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-[10px]";
+            });
+            // Highlighting Genre Buttons
+            ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
+                const btn = document.getElementById('gen-'+id);
+                btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500";
+            });
+
+            let items = allData.filter(b => (filterGenre === 'All' || b.genre === filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
             if (sortMode === 'order') items.sort((a,b) => a.order - b.order); else if (sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title)); else items.sort((a,b) => a[sortMode] - b[sortMode]);
+            
             container.innerHTML = items.map(b => {
                 let cl = "Consensus"; let cv = b.rank;
                 if (['kirk', 'huber', 'lattanzio', 'walco', 'driscoll'].includes(sortMode)) { cl = sortMode.toUpperCase(); cv = b[sortMode]; }
@@ -269,14 +218,8 @@
                 <div class="book-card shadow-sm" onclick="openModal(${b.order})">
                     <div class="aspect-square bg-slate-100 overflow-hidden"><img src="${b.image}" class="crop-square" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=${b.order}';"></div>
                     <div class="p-4 flex flex-col flex-grow">
-                        <div class="flex-grow mb-3">
-                            <h3 class="font-black text-[11px] uppercase leading-tight line-clamp-2">${b.title}</h3>
-                            <p class="text-[9px] font-bold text-blue-600 uppercase truncate">${b.author}</p>
-                        </div>
-                        <div class="pt-2 border-t flex justify-between items-end">
-                            <div class="text-left"><p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p><p class="text-[10px] font-bold">${b.order}</p></div>
-                            <div class="text-right"><p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cl}</p><p class="text-[10px] font-black italic">#${cv === 999 ? 'N/A' : cv}</p></div>
-                        </div>
+                        <div class="flex-grow mb-3"><h3 class="font-black text-[11px] uppercase leading-tight line-clamp-2">${b.title}</h3><p class="text-[9px] font-bold text-blue-600 uppercase truncate">${b.author}</p></div>
+                        <div class="pt-2 border-t flex justify-between items-end"><div class="text-left"><p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p><p class="text-[10px] font-bold">${b.order}</p></div><div class="text-right"><p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cl}</p><p class="text-[10px] font-black italic">#${cv === 999 ? 'N/A' : cv}</p></div></div>
                     </div>
                 </div>`;
             }).join('');
