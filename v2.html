@@ -17,11 +17,11 @@
             color: #1f2937;
         }
 
-        /* 3D Book Effect */
+        /* 3D Book Effect - SQUARE UPDATE */
         .book-container {
             perspective: 1000px;
             width: 100%;
-            aspect-ratio: 1/1.5; /* Portrait aspect ratio */
+            aspect-ratio: 1/1; /* Forced Square */
         }
         
         .book-card {
@@ -30,10 +30,10 @@
             transform-style: preserve-3d;
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             cursor: pointer;
-            border-radius: 8px 12px 12px 8px;
+            border-radius: 8px; /* Slightly tighter radius for squares */
             box-shadow: 
-                -1px 2px 4px rgba(0,0,0,0.1), /* Spine shadow */
-                5px 5px 15px rgba(0,0,0,0.15); /* Drop shadow */
+                -1px 2px 4px rgba(0,0,0,0.1), 
+                5px 5px 15px rgba(0,0,0,0.15);
         }
         
         .book-card:hover {
@@ -46,35 +46,34 @@
 
         .book-cover {
             width: 100%; height: 100%;
-            object-fit: cover;
-            border-radius: 6px 10px 10px 6px;
-            /* Spine Highlight gradient */
+            object-fit: cover; /* This forces the crop */
+            border-radius: 6px;
             background: linear-gradient(90deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 4%, rgba(0,0,0,0.1) 5%, rgba(0,0,0,0) 10%);
         }
 
-        /* The "Spine" pseudo-element for thickness */
+        /* Spine Effect */
         .book-card::before {
             content: '';
             position: absolute;
             left: 0; top: 2px; bottom: 2px;
-            width: 8px;
+            width: 6px; /* Slightly thinner spine for squares */
             background: linear-gradient(to right, #ccc, #fff);
-            transform: translateX(-7px) translateZ(-1px) rotateY(-90deg);
+            transform: translateX(-5px) translateZ(-1px) rotateY(-90deg);
             border-radius: 2px 0 0 2px;
         }
 
-        /* Rank Badge as a bookmark */
+        /* Rank Badge */
         .bookmark-badge {
-            position: absolute; top: -4px; right: 12px;
+            position: absolute; top: -4px; right: 8px;
             background: #ef4444; color: white;
-            padding: 6px 8px 12px 8px;
-            font-weight: 900; font-size: 10px;
+            padding: 4px 6px 8px 6px;
+            font-weight: 900; font-size: 9px;
             clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%);
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             z-index: 10;
         }
 
-        /* Frosted Header */
+        /* Glass Header */
         .glass-header {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(12px);
@@ -82,16 +81,12 @@
             position: sticky; top: 0; z-index: 50;
         }
 
-        /* Smooth Filter Tabs */
-        .pill-tab {
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
+        /* Filter Tabs */
+        .pill-tab { transition: all 0.3s ease; cursor: pointer; border: 1px solid transparent; }
         .pill-tab:hover { background: rgba(0,0,0,0.05); }
         .pill-tab.active { background: #1f2937; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(-1px); }
 
-        /* Modal Animation */
+        /* Modal */
         #modal { transition: opacity 0.3s ease; opacity: 0; pointer-events: none; }
         #modal.active { opacity: 1; pointer-events: auto; }
         .modal-card { transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -112,22 +107,22 @@
             </div>
 
             <div class="bg-white/80 p-1.5 rounded-full shadow-sm border border-gray-200 flex gap-1 backdrop-blur-md">
-                <button onclick="setSort('rank')" id="sort-rank" class="pill-tab active px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">Rank</button>
-                <button onclick="setSort('order')" id="sort-order" class="pill-tab px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">Order</button>
+                <button onclick="setSort('rank')" id="sort-rank" class="pill-tab px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">Rank</button>
+                <button onclick="setSort('order')" id="sort-order" class="pill-tab active px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">Order</button>
                 <button onclick="setSort('title')" id="sort-title" class="pill-tab px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">A-Z</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-6 pb-20">
-        <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-8 gap-y-12"></div>
+        <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10"></div>
     </main>
 
     <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onclick="closeModal()">
         <div class="modal-card bg-white rounded-3xl shadow-2xl overflow-hidden max-w-2xl w-full flex flex-col md:flex-row" onclick="event.stopPropagation()">
             <div class="w-full md:w-1/2 bg-gray-100 p-8 flex items-center justify-center">
-                <div class="book-card w-48 shadow-2xl rotate-3">
-                    <img id="m-img" class="w-full h-full object-cover rounded">
+                <div class="book-card w-48 shadow-2xl rotate-3 aspect-square">
+                    <img id="m-img" class="book-cover">
                 </div>
             </div>
             <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
@@ -159,7 +154,7 @@
     <script>
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         let allData = [];
-        let sortMode = 'rank';
+        let sortMode = 'order'; // Changed Default to Order
         const members = ['Kirk', 'Huber', 'Lat', 'Walco', 'Dris'];
 
         async function load() {
@@ -188,13 +183,13 @@
             let items = [...allData];
 
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
-            else if(sortMode === 'order') items.sort((a,b) => b.id - a.id);
+            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id); // 1 to Last
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
 
             grid.innerHTML = items.map(b => `
                 <div class="book-container" onclick="openModal(${b.id})">
                     <div class="book-card">
-                        <img src="${b.img}" class="book-cover" onerror="this.src='https://placehold.jp/30/e2e8f0/94a3b8/400x600.png?text=Cover'">
+                        <img src="${b.img}" class="book-cover" onerror="this.src='https://placehold.jp/30/e2e8f0/94a3b8/400x400.png?text=Cover'">
                         ${b.rank <= 10 ? `<div class="bookmark-badge">#${b.rank}</div>` : ''}
                     </div>
                     <div class="mt-3 px-1">
