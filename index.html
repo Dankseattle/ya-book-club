@@ -18,8 +18,6 @@
         .top-ten { border: 2px solid #fbbf24 !important; }
         .crop-square { width: 100%; height: 100%; object-fit: cover; object-position: center; }
         .hidden-section { display: none !important; }
-        
-        /* Pulse Animation for Current Reading */
         @keyframes pulse-border {
             0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
             70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
@@ -74,26 +72,21 @@
             <div id="feature-reading" class="w-full"></div>
             <div id="feature-next" class="w-full"></div>
         </div>
-
         <div class="flex items-center gap-4 mb-8">
             <h2 class="font-black uppercase text-xs tracking-widest text-slate-400">The Full Collection</h2>
             <div class="h-px bg-slate-200 flex-grow"></div>
         </div>
-
         <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
     </main>
 
-    <main id="about-section" class="max-w-3xl mx-auto p-6 hidden-section text-center">
-        <div class="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
-            <h2 class="text-3xl font-black uppercase mb-6 italic tracking-tight">The Committee</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100"><h3 class="font-black uppercase">Kirk</h3><p class="text-sm text-slate-500">The Purist</p></div>
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100"><h3 class="font-black uppercase">Huber</h3><p class="text-sm text-slate-500">The Enthusiast</p></div>
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100"><h3 class="font-black uppercase">Lattanzio</h3><p class="text-sm text-slate-500">The Critic</p></div>
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100"><h3 class="font-black uppercase">Walco</h3><p class="text-sm text-slate-500">The Maverick</p></div>
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100 md:col-span-2"><h3 class="font-black uppercase">Driscoll</h3><p class="text-sm text-slate-500">The Closer</p></div>
-            </div>
+    <main id="about-section" class="max-w-5xl mx-auto p-6 hidden-section">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-black uppercase italic tracking-tight mb-4 text-slate-900">The Selection Committee</h2>
+            <p class="text-slate-500 max-w-2xl mx-auto">Five readers with distinct tastes, working toward a single consensus.</p>
         </div>
+        
+        <div id="member-profiles" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            </div>
     </main>
 
     <div id="modal" onclick="closeModal()">
@@ -144,16 +137,10 @@
                     const rankRaw = (col[11] || "").replace(/"/g, "").trim();
                     const status = (col[41] || "").trim().toLowerCase();
                     const hasRank = rankRaw !== "" && rankRaw !== "N/A";
-
                     const pgVal = parseInt((col[39] || "").replace(/[^0-9]/g, "")) || 0;
                     const minVal = parseInt((col[40] || "").replace(/[^0-9]/g, "")) || 0;
                     
-                    // Logic: Stats only count books that have an official rank
-                    if (hasRank) { 
-                        totalP += pgVal; 
-                        totalM += minVal; 
-                        completedCount++; 
-                    }
+                    if (hasRank) { totalP += pgVal; totalM += minVal; completedCount++; }
 
                     return {
                         order: order, title: (col[1] || "").replace(/"/g, "").trim(), author: (col[2] || "").replace(/"/g, "").trim(),
@@ -169,8 +156,48 @@
                 document.getElementById('stat-mins').innerText = totalM.toLocaleString();
 
                 renderFeatures();
+                renderAbout();
                 render();
             } catch (e) { console.error(e); }
+        }
+
+        function renderAbout() {
+            const members = [
+                { id: 'kirk', name: 'Kirk' },
+                { id: 'huber', name: 'Huber' },
+                { id: 'lattanzio', name: 'Lattanzio' },
+                { id: 'walco', name: 'Walco' },
+                { id: 'driscoll', name: 'Driscoll' }
+            ];
+
+            const container = document.getElementById('member-profiles');
+            container.innerHTML = members.map(m => {
+                const readCount = allData.filter(b => b[m.id] !== 999).length;
+                const top5 = allData.filter(b => b[m.id] >= 1 && b[m.id] <= 5).sort((a,b) => a[m.id] - b[m.id]);
+
+                return `
+                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-2xl font-black uppercase italic">${m.name}</h3>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Books Read: ${readCount}</p>
+                            </div>
+                        </div>
+                        
+                        <p class="text-[9px] font-black uppercase text-slate-300 mb-3 tracking-widest">Personal Top 5</p>
+                        <div class="grid grid-cols-5 gap-2">
+                            ${top5.map(b => `
+                                <div class="aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm group relative cursor-pointer" onclick="openModal(${b.order})">
+                                    <img src="${b.image}" class="crop-square">
+                                    <div class="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition p-1">
+                                        <span class="text-[10px] font-black text-white italic">#${b[m.id]}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderFeatures() {
