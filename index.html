@@ -20,6 +20,13 @@
         .crop-square { width: 100%; height: 100%; object-fit: cover; object-position: center; }
         .hidden-section { display: none !important; }
         .genre-tag { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.9); padding: 2px 8px; border-radius: 6px; font-size: 7px; font-weight: 900; text-transform: uppercase; color: #2563eb; letter-spacing: 0.05em; z-index: 10; }
+        
+        /* Fixed Nav Animation */
+        .nav-link { position: relative; transition: color 0.3s ease; }
+        .nav-link::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: #2563eb; transition: width 0.3s ease; }
+        .nav-link.active { color: #0f172a; }
+        .nav-link.active::after { width: 100%; }
+
         @keyframes pulse-border {
             0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.3); }
             70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
@@ -37,21 +44,22 @@
                 <span class="text-slate-400">Pages <span id="stat-pages" class="text-slate-900 ml-1">—</span></span>
                 <span class="text-slate-400">Time <span id="stat-mins" class="text-slate-900 ml-1">—</span></span>
             </div>
-            <div class="hidden sm:flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span><span class="text-slate-400">YA DOOD ANALYTICS</span></div>
+            <div class="hidden sm:flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span><span class="text-slate-400">CLUB ANALYTICS</span></div>
         </div>
     </div>
 
     <header class="bg-white pt-8 pb-6 px-4 text-center sticky-header">
         <div class="flex justify-center mb-6">
-            <img src="clublogo.png" alt="YA BOOK CLUB" class="h-14 md:h-16 w-auto object-contain" onerror="this.style.display='none';">
+            <img src="clublogo.png" alt="YA BOOK CLUB" class="h-14 md:h-16 w-auto object-contain">
         </div>
         <div class="flex justify-center gap-8 mb-8">
-            <button onclick="showSection('library')" id="nav-library" class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 border-b-2 border-blue-600 pb-1">The Library</button>
-            <button onclick="showSection('about')" id="nav-about" class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1">The Committee</button>
+            <button onclick="showSection('library')" id="nav-library" class="nav-link active text-[10px] font-black uppercase tracking-[0.2em]">The Library</button>
+            <button onclick="showSection('about')" id="nav-about" class="nav-link text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">The Committee</button>
         </div>
-        <div id="controls" class="max-w-4xl mx-auto space-y-4 px-4">
+        
+        <div id="library-controls" class="max-w-4xl mx-auto space-y-4 px-4 transition-all duration-300">
             <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
-                <input type="text" id="searchInput" placeholder="Search..." class="px-5 py-2.5 border border-slate-200 rounded-xl w-full md:w-72 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <input type="text" id="searchInput" placeholder="Search library..." class="px-5 py-2.5 border border-slate-200 rounded-xl w-full md:w-72 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <div class="flex gap-2">
                     <button onclick="setSort('rank')" id="sort-rank" class="btn-active px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-[10px] uppercase">Rank</button>
                     <button onclick="setSort('order')" id="sort-order" class="bg-white px-4 py-2.5 rounded-xl font-bold border border-slate-200 text-slate-500 text-[10px] uppercase">Order</button>
@@ -72,10 +80,8 @@
     <main id="about-section" class="max-w-6xl mx-auto p-6 hidden-section">
         <div class="mb-12">
             <h2 class="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 text-center italic">Deep Club Intelligence</h2>
-            <div id="insights-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                </div>
+            <div id="insights-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
-
         <div id="member-profiles" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
     </main>
 
@@ -145,9 +151,10 @@
         function runDeepIntelligence() {
             const insights = [];
             const rankedOnly = allData.filter(b => b.rank !== 999);
+            if (rankedOnly.length === 0) return;
 
-            // 1. Taste Twins (Agreement Matrix)
-            let bestPair = {p1:'', p2:'', score: 1000}, worstPair = {p1:'', p2:'', score: 0};
+            // 1. Taste Twins
+            let bestPair = {p1:'', p2:'', score: 1000};
             for (let i=0; i<members.length; i++) {
                 for (let j=i+1; j<members.length; j++) {
                     let diffSum = 0, count = 0;
@@ -157,46 +164,29 @@
                             count++;
                         }
                     });
-                    const avg = diffSum / count;
-                    if(avg < bestPair.score) bestPair = {p1:members[i].name, p2:members[j].name, score: avg};
-                    if(avg > worstPair.score) worstPair = {p1:members[i].name, p2:members[j].name, score: avg};
+                    const avg = diffSum / (count || 1);
+                    if(count > 0 && avg < bestPair.score) bestPair = {p1:members[i].name, p2:members[j].name, score: avg};
                 }
             }
-            insights.push({title: 'Taste Twins', val: `${bestPair.p1} & ${bestPair.p2}`, desc: 'Statistically the most similar tastes in the club.', icon: '🤝'});
-            insights.push({title: 'The Rivals', val: `${worstPair.p1} vs ${worstPair.p2}`, desc: 'Total opposites. If one loves it, the other usually hates it.', icon: '⚔️'});
+            insights.push({title: 'Taste Twins', val: bestPair.p1 ? `${bestPair.p1} & ${bestPair.p2}` : 'None', desc: 'Statistically the most similar tastes.', icon: '🤝'});
 
-            // 2. Elitism Trend
-            const midPoint = Math.floor(rankedOnly.length/2);
-            const earlyAvg = rankedOnly.slice(0, midPoint).reduce((a,b)=>a+b.rank,0)/midPoint;
-            const lateAvg = rankedOnly.slice(midPoint).reduce((a,b)=>a+b.rank,0)/midPoint;
-            const trendText = lateAvg > earlyAvg ? 'Harder to Please' : 'Finding Better Books';
-            insights.push({title: 'Club Culture', val: trendsetter = trendText, desc: `Average group score has shifted from ${Math.round(earlyAvg)} to ${Math.round(lateAvg)}.`, icon: '📈'});
+            // 2. Genre Dominance
+            const genreCounts = rankedOnly.reduce((acc, b) => { acc[b.genre] = (acc[b.genre] || 0) + 1; return acc; }, {});
+            const topGenre = Object.entries(genreCounts).sort((a,b) => b[1] - a[1])[0];
+            insights.push({title: 'Genre Dominance', val: topGenre ? topGenre[0] : 'None', desc: `This category makes up ${Math.round((topGenre[1]/rankedOnly.length)*100)}% of the library.`, icon: '🎡'});
 
-            // 3. Golden Page Count
-            const ranges = {short: {min:0, max:300, sum:0, cnt:0}, mid: {min:301, max:450, sum:0, cnt:0}, long: {min:451, max:2000, sum:0, cnt:0}};
+            // 3. The Sweet Spot
+            const ranges = {short: {s:0, c:0}, mid: {s:0, c:0}, long: {s:0, c:0}};
             rankedOnly.forEach(b => {
-                if(b.pages <= 300) {ranges.short.sum += b.rank; ranges.short.cnt++;}
-                else if(b.pages <= 450) {ranges.mid.sum += b.rank; ranges.mid.cnt++;}
-                else {ranges.long.sum += b.rank; ranges.long.cnt++;}
+                let r = b.pages <= 300 ? 'short' : b.pages <= 450 ? 'mid' : 'long';
+                ranges[r].s += b.rank; ranges[r].c++;
             });
-            let bestRange = Object.entries(ranges).sort((a,b) => (a[1].sum/a[1].cnt) - (b[1].sum/b[1].cnt))[0];
-            insights.push({title: 'The Sweet Spot', val: bestRange[0].toUpperCase(), desc: `Books in this length range statistically rank the highest with the group.`, icon: '📏'});
-
-            // 4. Hero vs Ego (Crowd Pleaser)
-            let hero = {name:'', diff: 0};
-            members.forEach(m => {
-                const picks = rankedOnly.filter(b => b.selector.toLowerCase().includes(m.name.toLowerCase()));
-                if(picks.length > 0) {
-                    const avgPickRank = picks.reduce((s,b)=>s+b.rank,0)/picks.length;
-                    const selfRank = picks.reduce((s,b)=>s+b[m.id],0)/picks.length;
-                    const diff = selfRank - avgPickRank; // Positive means group liked it more than the selector
-                    if(diff > hero.diff) hero = {name: m.name, diff};
-                }
-            });
-            insights.push({title: 'The Crowd Pleaser', val: hero.name, desc: 'Picks books that the group ends up loving even more than they do.', icon: '🌟'});
+            let bestRange = Object.entries(ranges).filter(r => r[1].c > 0).sort((a,b) => (a[1].s/a[1].c) - (b[1].s/b[1].c))[0];
+            const labels = {short:'< 300 pgs', mid:'300-450 pgs', long:'> 450 pgs'};
+            insights.push({title: 'The Sweet Spot', val: bestRange ? labels[bestRange[0]] : 'N/A', desc: 'The page count range with the highest average score.', icon: '📏'});
 
             document.getElementById('insights-grid').innerHTML = insights.map(i => `
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center md:text-left">
                     <div class="text-2xl mb-2">${i.icon}</div>
                     <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest">${i.title}</p>
                     <h3 class="text-xl font-black uppercase italic my-1">${i.val}</h3>
@@ -204,16 +194,12 @@
                 </div>
             `).join('');
 
-            // Member Profiles logic
             document.getElementById('member-profiles').innerHTML = members.map(m => {
                 const readCount = rankedOnly.filter(b => b[m.id] !== 999).length;
                 const top5 = rankedOnly.filter(b => b[m.id] <= 5).sort((a,b)=>a[m.id]-b[m.id]).slice(0,5);
-                const picks = rankedOnly.filter(b => b.selector.toLowerCase().includes(m.name.toLowerCase())).length;
                 return `<div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-2xl font-black uppercase italic">${m.name}</h3>
-                    <div class="flex gap-4 mt-1 mb-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                        <span>Ranked: ${readCount}</span><span>Picks: ${picks}</span>
-                    </div>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 mb-6">Ranked ${readCount} Books</p>
                     <div class="grid grid-cols-5 gap-2">
                         ${top5.map(b => `<img src="${b.image}" class="aspect-square rounded-lg object-cover cursor-pointer hover:scale-105 transition" onclick="openModal(${b.order})">`).join('')}
                     </div>
@@ -223,8 +209,20 @@
 
         function renderFeatures() {
             const rd = allData.find(b => b.status === 'reading'), nx = allData.find(b => b.status === 'next');
-            if(rd) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2">Reading Now</div><div class="bg-white p-5 rounded-[2rem] border-2 border-blue-600 flex items-center gap-4 reading-pulse cursor-pointer" onclick="openModal(${rd.order})"><img src="${rd.image}" class="w-16 h-16 rounded-xl object-cover"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1">${rd.title}</h3><p class="text-[10px] text-slate-400 uppercase font-bold">${rd.author}</p></div></div>`;
-            if(nx) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-4 opacity-70 cursor-pointer" onclick="openModal(${nx.order})"><img src="${nx.image}" class="w-16 h-16 rounded-xl object-cover grayscale"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1">${nx.title}</h3><p class="text-[10px] text-slate-300 uppercase font-bold">${nx.author}</p></div></div>`;
+            if(rd) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2">Reading Now</div><div class="bg-white p-5 rounded-[2rem] border-2 border-blue-600 flex items-center gap-4 reading-pulse cursor-pointer" onclick="openModal(${rd.order})"><img src="${rd.image}" class="w-16 h-16 rounded-xl object-cover"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900">${rd.title}</h3><p class="text-[10px] text-slate-400 uppercase font-bold">${rd.author}</p></div></div>`;
+            if(nx) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-4 opacity-70 cursor-pointer" onclick="openModal(${nx.order})"><img src="${nx.image}" class="w-16 h-16 rounded-xl object-cover grayscale"><div class="text-left"><h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-500">${nx.title}</h3><p class="text-[10px] text-slate-300 uppercase font-bold">${nx.author}</p></div></div>`;
+        }
+
+        function showSection(s) {
+            const isLib = s === 'library';
+            document.getElementById('library-section').classList.toggle('hidden-section', !isLib);
+            document.getElementById('library-controls').classList.toggle('hidden-section', !isLib);
+            document.getElementById('about-section').classList.toggle('hidden-section', isLib);
+            
+            document.getElementById('nav-library').classList.toggle('active', isLib);
+            document.getElementById('nav-about').classList.toggle('active', !isLib);
+            document.getElementById('nav-library').classList.toggle('text-slate-400', !isLib);
+            document.getElementById('nav-about').classList.toggle('text-slate-400', isLib);
         }
 
         function openModal(id) {
@@ -244,7 +242,6 @@
         }
 
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
-        function showSection(s) { document.getElementById('library-section').classList.toggle('hidden-section', s!=='library'); document.getElementById('about-section').classList.toggle('hidden-section', s!=='about'); }
         function setSort(s) { sortMode = s; render(); }
 
         function render() {
