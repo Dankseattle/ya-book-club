@@ -17,22 +17,26 @@
         #modal.active { display: flex; }
         .top-ten { border: 2px solid #fbbf24 !important; }
         .crop-square { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        .hidden-section { display: none; }
     </style>
 </head>
 <body>
 
     <header class="bg-white border-b pt-10 pb-6 px-4 text-center sticky-header">
         <h1 class="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-2 text-slate-900 leading-none">YA BOOK CLUB</h1>
-        <p id="book-count" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 text-center italic">Syncing Database...</p>
         
-        <div class="max-w-5xl mx-auto space-y-4">
+        <div class="flex justify-center gap-4 mb-6">
+            <button onclick="showSection('library')" id="nav-library" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1">The Library</button>
+            <button onclick="showSection('about')" id="nav-about" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1">About Us</button>
+        </div>
+        
+        <div id="controls" class="max-w-5xl mx-auto space-y-4">
             <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
                 <input type="text" id="searchInput" placeholder="Search title or author..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <div class="flex gap-2 flex-wrap justify-center">
                     <button onclick="setSort('rank')" id="sort-rank" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition uppercase text-[10px]">Rank</button>
                     <button onclick="setSort('order')" id="sort-order" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-[10px]">Order</button>
                     <button onclick="setSort('title')" id="sort-title" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm transition text-slate-500 uppercase text-[10px]">A-Z</button>
-                    
                     <select id="rankSelector" onchange="setSort(this.value)" class="bg-white px-4 py-3 rounded-xl font-bold border shadow-sm text-slate-500 uppercase text-[10px] outline-none cursor-pointer">
                         <option value="" disabled selected>Individual Ranks</option>
                         <option value="kirk">Kirk</option>
@@ -51,8 +55,45 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-6">
+    <main id="library-section" class="max-w-7xl mx-auto p-6">
         <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
+    </main>
+
+    <main id="about-section" class="max-w-3xl mx-auto p-6 hidden-section text-center">
+        <div class="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
+            <h2 class="text-3xl font-black uppercase mb-6 italic tracking-tight">The Selection Committee</h2>
+            <p class="text-slate-500 leading-relaxed mb-10">Welcome to the YA Book Club. We are five readers with five very different sets of tastes, coming together to rank and review every title we read. This database tracks our individual journeys and the consensus that emerges.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h3 class="font-black uppercase text-lg mb-1">Kirk</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">The Purist</p>
+                    <p class="text-sm text-slate-600">Known for high standards and a love for classic narrative structures.</p>
+                </div>
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h3 class="font-black uppercase text-lg mb-1">Huber</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">The Enthusiast</p>
+                    <p class="text-sm text-slate-600">Loves a good plot twist and fast-paced action.</p>
+                </div>
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h3 class="font-black uppercase text-lg mb-1">Lattanzio</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">The Critic</p>
+                    <p class="text-sm text-slate-600">Deep appreciation for character development and prose.</p>
+                </div>
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h3 class="font-black uppercase text-lg mb-1">Walco</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">The Maverick</p>
+                    <p class="text-sm text-slate-600">Often has the most unique takes in the group. Keeps us on our toes.</p>
+                </div>
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 md:col-span-2">
+                    <h3 class="font-black uppercase text-lg mb-1">Driscoll</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">The Closer</p>
+                    <p class="text-sm text-slate-600">Brings balance to the consensus and rounds out the rankings.</p>
+                </div>
+            </div>
+            
+            <button onclick="showSection('library')" class="mt-12 bg-slate-900 text-white px-8 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:scale-105 transition">Back to the Books</button>
+        </div>
     </main>
 
     <div id="modal" onclick="closeModal()">
@@ -69,14 +110,12 @@
                         <p id="modal-author" class="text-sm font-bold text-slate-400 uppercase tracking-widest"></p>
                     </div>
                 </div>
-                
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Order</p><p id="modal-order" class="text-sm font-black text-slate-900"></p></div>
                     <div id="consensus-box" class="bg-slate-900 p-3 rounded-2xl text-center shadow-lg"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Consensus</p><p id="modal-consensus" class="text-sm font-black text-white italic"></p></div>
                     <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Pages</p><p id="modal-pages" class="text-sm font-black text-slate-900"></p></div>
                     <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Audio Length</p><p id="modal-length" class="text-sm font-black text-slate-900"></p></div>
                 </div>
-
                 <h3 class="font-black text-xs uppercase tracking-[0.2em] text-slate-300 border-b pb-2 mb-4 text-center">Scoreboard</h3>
                 <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase">Kirk</p><p id="rank-kirk" class="text-sm font-black text-slate-900">--</p></div>
@@ -105,15 +144,9 @@
                 allData = rows.slice(1).map((col, index) => {
                     const order = parseInt(col[0]) || (index + 1);
                     return {
-                        order: order,
-                        title: (col[1] || "").replace(/"/g, "").trim(),
-                        author: (col[2] || "").replace(/"/g, "").trim(),
-                        kirk: parseInt(col[3]) || 999,
-                        huber: parseInt(col[4]) || 999,
-                        lattanzio: parseInt(col[5]) || 999,
-                        walco: parseInt(col[6]) || 999,
-                        driscoll: parseInt(col[7]) || 999,
-                        rank: parseInt(col[11]) || 999,
+                        order: order, title: (col[1] || "").replace(/"/g, "").trim(), author: (col[2] || "").replace(/"/g, "").trim(),
+                        kirk: parseInt(col[3]) || 999, huber: parseInt(col[4]) || 999, lattanzio: parseInt(col[5]) || 999,
+                        walco: parseInt(col[6]) || 999, driscoll: parseInt(col[7]) || 999, rank: parseInt(col[11]) || 999,
                         genre: (col[17] || "").replace(/"/g, "").trim() || "Other",
                         pages: (col[39] || "").replace(/"/g, "").trim() || "N/A",  
                         length: (col[40] || "").replace(/"/g, "").trim() || "N/A", 
@@ -125,29 +158,43 @@
             } catch (e) { console.error(e); }
         }
 
-        function setSort(s) { 
-            sortMode = s; 
-            // Reset dropdown if main buttons are clicked
-            if(['rank', 'order', 'title'].includes(s)) {
-                document.getElementById('rankSelector').selectedIndex = 0;
+        // Section Toggle Logic
+        function showSection(section) {
+            const library = document.getElementById('library-section');
+            const about = document.getElementById('about-section');
+            const controls = document.getElementById('controls');
+            const navLibrary = document.getElementById('nav-library');
+            const navAbout = document.getElementById('nav-about');
+
+            if (section === 'library') {
+                library.classList.remove('hidden-section');
+                controls.classList.remove('hidden-section');
+                about.classList.add('hidden-section');
+                navLibrary.classList.replace('text-slate-400', 'text-slate-900');
+                navLibrary.classList.add('border-b-2', 'border-slate-900');
+                navAbout.classList.replace('text-slate-900', 'text-slate-400');
+                navAbout.classList.remove('border-b-2', 'border-slate-900');
+            } else {
+                library.classList.add('hidden-section');
+                controls.classList.add('hidden-section');
+                about.classList.remove('hidden-section');
+                navAbout.classList.replace('text-slate-400', 'text-slate-900');
+                navAbout.classList.add('border-b-2', 'border-slate-900');
+                navLibrary.classList.replace('text-slate-900', 'text-slate-400');
+                navLibrary.classList.remove('border-b-2', 'border-slate-900');
+                window.scrollTo(0,0);
             }
-            render(); 
         }
 
+        function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
         function setGenre(g) { filterGenre = g; render(); }
-        
         function openModal(index) {
             const b = allData.find(x => x.order === index);
             if(!b) return;
             const modalContent = document.getElementById('modal-content');
             const consensusBox = document.getElementById('consensus-box');
-            if (b.rank <= 10 && b.rank > 0) {
-                modalContent.classList.add('top-ten');
-                consensusBox.style.backgroundColor = '#fbbf24';
-            } else {
-                modalContent.classList.remove('top-ten');
-                consensusBox.style.backgroundColor = '#0f172a';
-            }
+            if (b.rank <= 10 && b.rank > 0) { modalContent.classList.add('top-ten'); consensusBox.style.backgroundColor = '#fbbf24'; } 
+            else { modalContent.classList.remove('top-ten'); consensusBox.style.backgroundColor = '#0f172a'; }
             document.getElementById('modal-img').src = b.image;
             document.getElementById('modal-title').innerText = b.title;
             document.getElementById('modal-author').innerText = b.author;
@@ -163,13 +210,11 @@
             document.getElementById('rank-driscoll').innerText = b.driscoll === 999 ? "--" : b.driscoll;
             document.getElementById('modal').classList.add('active');
         }
-
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
 
         function render() {
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
-
             ['rank', 'order', 'title'].forEach(id => {
                 const btn = document.getElementById('sort-'+id);
                 btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-[10px]" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-[10px]";
@@ -178,43 +223,22 @@
                 const btn = document.getElementById('gen-'+id);
                 btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm";
             });
-
             let items = allData.filter(b => (filterGenre === 'All' || b.genre === filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
-            
-            if (sortMode === 'order') items.sort((a,b) => a.order - b.order);
-            else if (sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
-            else items.sort((a,b) => a[sortMode] - b[sortMode]);
-
+            if (sortMode === 'order') items.sort((a,b) => a.order - b.order); else if (sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title)); else items.sort((a,b) => a[sortMode] - b[sortMode]);
             container.innerHTML = items.map(b => {
-                // Determine what label and value to show in the bottom right corner
-                let cornerLabel = "Consensus";
-                let cornerValue = b.rank;
-
-                // If we are sorting by an individual person, show their rank
-                if (['kirk', 'huber', 'lattanzio', 'walco', 'driscoll'].includes(sortMode)) {
-                    cornerLabel = sortMode.toUpperCase();
-                    cornerValue = b[sortMode];
-                }
-
+                let cornerLabel = "Consensus"; let cornerValue = b.rank;
+                if (['kirk', 'huber', 'lattanzio', 'walco', 'driscoll'].includes(sortMode)) { cornerLabel = sortMode.toUpperCase(); cornerValue = b[sortMode]; }
                 return `
                 <div class="book-card shadow-sm" onclick="openModal(${b.order})">
-                    <div class="aspect-square bg-slate-100 overflow-hidden">
-                        <img src="${b.image}" alt="${b.title}" class="crop-square" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=${b.order}';">
-                    </div>
+                    <div class="aspect-square bg-slate-100 overflow-hidden"><img src="${b.image}" alt="${b.title}" class="crop-square" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=${b.order}';"></div>
                     <div class="p-4 flex flex-col flex-grow">
                         <div class="flex-grow mb-3">
                             <h3 class="font-black text-[11px] uppercase leading-tight line-clamp-2 text-slate-900 mb-1">${b.title}</h3>
                             <p class="text-[9px] font-bold text-blue-600 uppercase tracking-tight truncate">${b.author}</p>
                         </div>
                         <div class="pt-2 border-t flex justify-between items-end">
-                            <div class="text-left">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p>
-                                <p class="text-[10px] font-bold text-slate-700 leading-none">${b.order}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cornerLabel}</p>
-                                <p class="text-[10px] font-black italic text-slate-900 leading-none">#${cornerValue === 999 ? 'N/A' : cornerValue}</p>
-                            </div>
+                            <div class="text-left"><p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p><p class="text-[10px] font-bold text-slate-700 leading-none">${b.order}</p></div>
+                            <div class="text-right"><p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cornerLabel}</p><p class="text-[10px] font-black italic text-slate-900 leading-none">#${cornerValue === 999 ? 'N/A' : cornerValue}</p></div>
                         </div>
                     </div>
                 </div>`;
