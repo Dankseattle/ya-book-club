@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Dood Book Club</title>
+    <title>Ya Book Club</title>
+    
+    <link rel="icon" type="image/png" href="clublogo.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -28,7 +31,7 @@
 </head>
 <body>
 
-    <div class="bg-slate-900 text-white py-3 px-4 overflow-x-auto shadow-inner">
+    <div class="bg-slate-900 text-white py-3 px-4 overflow-x-auto shadow-inner border-b border-slate-800">
         <div class="max-w-7xl mx-auto flex justify-between items-center gap-8 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
             <div class="flex gap-6">
                 <span class="text-slate-400">Read: <span id="stat-count" class="text-white">—</span></span>
@@ -39,17 +42,20 @@
         </div>
     </div>
 
-    <header class="bg-white border-b pt-10 pb-6 px-4 text-center sticky-header">
-        <h1 class="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-4 text-slate-900 leading-none">Ya Dood CLUB</h1>
+    <header class="bg-white border-b pt-6 pb-6 px-4 text-center sticky-header">
+        <div class="flex justify-center mb-4">
+            <img src="clublogo.png" alt="YA BOOK CLUB" class="h-16 md:h-20 w-auto object-contain pointer-events-none" onerror="this.style.display='none'; document.getElementById('text-logo').style.display='block';">
+            <h1 id="text-logo" class="hidden text-4xl md:text-5xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">YA BOOK CLUB</h1>
+        </div>
         
-        <div class="flex justify-center gap-4 mb-6">
-            <button onclick="showSection('library')" id="nav-library" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1">The Library</button>
-            <button onclick="showSection('about')" id="nav-about" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1">About Us</button>
+        <div class="flex justify-center gap-6 mb-6">
+            <button onclick="showSection('library')" id="nav-library" class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1">The Library</button>
+            <button onclick="showSection('about')" id="nav-about" class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1">About Us</button>
         </div>
         
         <div id="controls" class="max-w-5xl mx-auto space-y-4">
             <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
-                <input type="text" id="searchInput" placeholder="Search library..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <input type="text" id="searchInput" placeholder="Search title or author..." class="px-5 py-3 border rounded-xl w-full md:w-80 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <div class="flex gap-2 flex-wrap justify-center">
                     <button onclick="setSort('rank')" id="sort-rank" class="btn-active px-5 py-3 rounded-xl font-bold border shadow-sm uppercase text-[10px]">Rank</button>
                     <button onclick="setSort('order')" id="sort-order" class="bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 uppercase text-[10px]">Order</button>
@@ -104,7 +110,7 @@
                     <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Order</p><p id="modal-order" class="text-sm font-black text-slate-900"></p></div>
                     <div id="consensus-box" class="bg-slate-900 p-3 rounded-2xl text-center shadow-lg"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Consensus</p><p id="modal-consensus" class="text-sm font-black text-white italic"></p></div>
                     <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Pages</p><p id="modal-pages" class="text-sm font-black text-slate-900"></p></div>
-                    <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Length</p><p id="modal-length" class="text-sm font-black text-slate-900"></p></div>
+                    <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100"><p class="text-[8px] font-black text-slate-400 uppercase mb-1">Audio Length</p><p id="modal-length" class="text-sm font-black text-slate-900"></p></div>
                 </div>
                 <div class="grid grid-cols-5 gap-2">
                     <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[7px] font-black text-slate-400 uppercase mb-1">Kir</p><p id="rank-kirk" class="text-xs font-black"></p></div>
@@ -130,21 +136,31 @@
                 const csvText = await res.text();
                 const rows = csvText.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
                 let totalP = 0, totalM = 0, completedCount = 0;
+                
                 allData = rows.slice(1).map((col, index) => {
                     const order = parseInt(col[0]) || (index + 1);
                     const rankRaw = (col[11] || "").replace(/"/g, "").trim();
+                    const status = (col[41] || "").trim().toLowerCase();
                     const hasRank = rankRaw !== "" && rankRaw !== "N/A";
                     const pgVal = parseInt((col[39] || "").replace(/[^0-9]/g, "")) || 0;
                     const minVal = parseInt((col[40] || "").replace(/[^0-9]/g, "")) || 0;
-                    if (hasRank) { totalP += pgVal; totalM += minVal; completedCount++; }
+                    
+                    if (hasRank) { 
+                        totalP += pgVal; 
+                        totalM += minVal; 
+                        completedCount++; 
+                    }
+
                     return {
                         order: order, title: (col[1] || "").replace(/"/g, "").trim(), author: (col[2] || "").replace(/"/g, "").trim(),
                         kirk: parseInt(col[3]) || 999, huber: parseInt(col[4]) || 999, lattanzio: parseInt(col[5]) || 999,
                         walco: parseInt(col[6]) || 999, driscoll: parseInt(col[7]) || 999, rank: hasRank ? parseInt(rankRaw) : 999,
                         genre: (col[17] || "").replace(/"/g, "").trim() || "Other",
-                        pages: pgVal, length: minVal, status: (col[41] || "").trim().toLowerCase(), image: `covers/${order}.jpg`, isVisible: hasRank || (col[41] || "").trim() !== ""
+                        pages: pgVal, length: minVal, status: status, image: `covers/${order}.jpg`, 
+                        isVisible: hasRank || status !== ""
                     };
                 }).filter(b => b.title !== "" && b.title !== "Book" && b.isVisible);
+
                 document.getElementById('stat-count').innerText = completedCount;
                 document.getElementById('stat-pages').innerText = totalP.toLocaleString();
                 document.getElementById('stat-mins').innerText = totalM.toLocaleString();
@@ -152,13 +168,6 @@
                 renderAbout();
                 render();
             } catch (e) { console.error(e); }
-        }
-
-        function renderFeatures() {
-            const reading = allData.find(b => b.status === 'reading');
-            const next = allData.find(b => b.status === 'next');
-            if (reading) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.2em] ml-1 flex items-center gap-2"><span class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span> Currently Reading</div><div class="bg-blue-50 p-5 rounded-[2rem] border border-blue-100 flex items-center gap-5 cursor-pointer reading-pulse" onclick="openModal(${reading.order})"><img src="${reading.image}" class="w-24 h-24 rounded-2xl object-cover shadow-sm"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1">${reading.title}</h3><p class="text-xs font-bold text-slate-500 uppercase">${reading.author}</p></div></div>`;
-            if (next) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.2em] ml-1 text-left">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-5 cursor-pointer" onclick="openModal(${next.order})"><img src="${next.image}" class="w-24 h-24 rounded-2xl object-cover grayscale opacity-60"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1 text-slate-500">${next.title}</h3><p class="text-xs font-bold text-slate-300 uppercase">${next.author}</p></div></div>`;
         }
 
         function renderAbout() {
@@ -170,12 +179,19 @@
             }).join('');
         }
 
+        function renderFeatures() {
+            const reading = allData.find(b => b.status === 'reading');
+            const next = allData.find(b => b.status === 'next');
+            if (reading) document.getElementById('feature-reading').innerHTML = `<div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.2em] ml-1 flex items-center gap-2"><span class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span> Currently Reading</div><div class="bg-blue-50 p-5 rounded-[2rem] border border-blue-100 flex items-center gap-5 cursor-pointer reading-pulse" onclick="openModal(${reading.order})"><img src="${reading.image}" class="w-24 h-24 rounded-2xl object-cover shadow-sm"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1">${reading.title}</h3><p class="text-xs font-bold text-slate-500 uppercase">${reading.author}</p></div></div>`;
+            if (next) document.getElementById('feature-next').innerHTML = `<div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.2em] ml-1 text-left">Up Next</div><div class="bg-white p-5 rounded-[2rem] border border-slate-200 flex items-center gap-5 cursor-pointer" onclick="openModal(${next.order})"><img src="${next.image}" class="w-24 h-24 rounded-2xl object-cover grayscale opacity-60"><div class="text-left"><h3 class="font-black text-lg uppercase leading-none mb-1 text-slate-500">${next.title}</h3><p class="text-xs font-bold text-slate-300 uppercase">${next.author}</p></div></div>`;
+        }
+
         function showSection(section) {
             document.getElementById('library-section').classList.toggle('hidden-section', section !== 'library');
             document.getElementById('controls').classList.toggle('hidden-section', section !== 'library');
             document.getElementById('about-section').classList.toggle('hidden-section', section !== 'about');
-            document.getElementById('nav-library').className = section === 'library' ? "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
-            document.getElementById('nav-about').className = section === 'about' ? "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
+            document.getElementById('nav-library').className = section === 'library' ? "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
+            document.getElementById('nav-about').className = section === 'about' ? "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900 border-b-2 border-slate-900 pb-1" : "text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition pb-1";
         }
 
         function setSort(s) { sortMode = s; if(['rank', 'order', 'title'].includes(s)) document.getElementById('rankSelector').selectedIndex = 0; render(); }
@@ -196,21 +212,16 @@
         function render() {
             const container = document.getElementById('grid');
             const search = document.getElementById('searchInput').value.toLowerCase();
-            
-            // Highlighting Sort Buttons
             ['rank', 'order', 'title'].forEach(id => {
                 const btn = document.getElementById('sort-'+id);
                 btn.className = sortMode === id ? "btn-active px-5 py-3 rounded-xl font-bold border shadow-sm transition text-[10px]" : "bg-white px-5 py-3 rounded-xl font-bold border shadow-sm text-slate-500 transition text-[10px]";
             });
-            // Highlighting Genre Buttons
             ['All', 'Fiction', 'Non-Fiction'].forEach(id => {
                 const btn = document.getElementById('gen-'+id);
-                btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500";
+                btn.className = filterGenre === id ? "btn-active px-4 py-1.5 rounded-full text-[10px] font-bold border transition shadow-sm" : "bg-white px-4 py-1.5 rounded-full text-[10px] font-bold border transition text-slate-500 shadow-sm";
             });
-
             let items = allData.filter(b => (filterGenre === 'All' || b.genre === filterGenre) && (b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search)));
             if (sortMode === 'order') items.sort((a,b) => a.order - b.order); else if (sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title)); else items.sort((a,b) => a[sortMode] - b[sortMode]);
-            
             container.innerHTML = items.map(b => {
                 let cl = "Consensus"; let cv = b.rank;
                 if (['kirk', 'huber', 'lattanzio', 'walco', 'driscoll'].includes(sortMode)) { cl = sortMode.toUpperCase(); cv = b[sortMode]; }
@@ -219,7 +230,7 @@
                     <div class="aspect-square bg-slate-100 overflow-hidden"><img src="${b.image}" class="crop-square" onerror="this.src='https://placehold.jp/24/e2e8f0/94a3b8/400x600.png?text=${b.order}';"></div>
                     <div class="p-4 flex flex-col flex-grow">
                         <div class="flex-grow mb-3"><h3 class="font-black text-[11px] uppercase leading-tight line-clamp-2">${b.title}</h3><p class="text-[9px] font-bold text-blue-600 uppercase truncate">${b.author}</p></div>
-                        <div class="pt-2 border-t flex justify-between items-end"><div class="text-left"><p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p><p class="text-[10px] font-bold">${b.order}</p></div><div class="text-right"><p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cl}</p><p class="text-[10px] font-black italic">#${cv === 999 ? 'N/A' : cv}</p></div></div>
+                        <div class="pt-2 border-t flex justify-between items-end"><div class="text-left"><p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Order</p><p class="text-[10px] font-bold text-slate-700 leading-none">${b.order}</p></div><div class="text-right"><p class="text-[7px] font-black text-slate-400 uppercase leading-none">${cl}</p><p class="text-[10px] font-black italic">#${cv === 999 ? 'N/A' : cv}</p></div></div>
                     </div>
                 </div>`;
             }).join('');
