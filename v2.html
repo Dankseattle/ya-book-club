@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YA Book Club - V2</title>
+    <link rel="icon" type="image/png" href="clublogo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; } /* Dark Mode base */
+        .sticky-header { position: sticky; top: 0; z-index: 40; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid #1e293b; }
+        
+        /* The Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            grid-auto-flow: dense;
+            padding-bottom: 4rem;
+        }
+        
+        /* Different Card Sizes */
+        .card-standard { grid-column: span 1; grid-row: span 1; }
+        .card-wide { grid-column: span 2; grid-row: span 1; }
+        .card-tall { grid-column: span 1; grid-row: span 2; }
+        .card-big { grid-column: span 2; grid-row: span 2; }
+
+        /* Book Styling */
+        .book-card { 
+            overflow: hidden; border-radius: 1rem; position: relative; cursor: pointer; 
+            transition: transform 0.2s ease; background: #1e293b;
+        }
+        .book-card:hover { transform: scale(1.02); z-index: 10; outline: 4px solid #3b82f6; }
+        .book-cover { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Stat Cards */
+        .stat-card { 
+            background: #1e293b; border: 1px solid #334155;
+            border-radius: 1rem; padding: 1.5rem; 
+            display: flex; flex-direction: column; justify-content: center; align-items: flex-start; 
+        }
+        .stat-highlight { font-weight: 900; line-height: 1; margin-bottom: 0.25rem; }
+        
+        @media (min-width: 768px) {
+            .bento-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+        }
+        
+        /* Simple Modal */
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0, 0.9); z-index: 50; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        #modal.active { display: flex; }
+    </style>
+</head>
+<body>
+
+    <header class="sticky-header px-6 py-4 flex justify-between items-center mb-6">
+        <div class="flex items-center gap-3">
+            <img src="clublogo.png" class="h-10 w-auto bg-white rounded-full p-1">
+            <div class="hidden sm:block">
+                <h1 class="font-black italic uppercase text-lg leading-none tracking-tighter">YA BOOK CLUB</h1>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="setSort('rank')" id="btn-rank" class="bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase hover:bg-blue-500 transition">Rank</button>
+            <button onclick="setSort('order')" id="btn-order" class="bg-slate-800 text-slate-400 px-4 py-2 rounded-full text-[10px] font-bold uppercase hover:bg-slate-700 transition">Order</button>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-4">
+        <div id="grid" class="bento-grid"></div>
+    </main>
+
+    <div id="modal" onclick="this.classList.remove('active')">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-sm w-full text-center relative" onclick="event.stopPropagation()">
+            <img id="modal-img" src="" class="w-32 h-32 mx-auto rounded-lg mb-4 object-cover shadow-2xl">
+            <h2 id="modal-title" class="text-xl font-black uppercase leading-tight"></h2>
+            <p id="modal-author" class="text-xs font-bold text-slate-400 uppercase mb-4"></p>
+            <div class="inline-block bg-blue-600 px-4 py-1 rounded-full text-sm font-black uppercase tracking-widest" id="modal-rank"></div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let sortMode = 'rank';
+        const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
+        
+        async function load() {
+            try {
+                const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`);
+                const csv = await res.text();
+                const rows = csv.split('\n').map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+                
+                allData = rows.slice(1).map((c, i) => {
+                    const rRaw = (c[11]||"").replace(/"/g,"").trim();
+                    const hasRank = rRaw !== "" && rRaw !== "N/A";
+                    return { 
+                        order: parseInt(c[0])||(i+1), 
+                        title: (c[1]||"").replace(/"/g,"").trim(), 
+                        author: (c[2]||"").replace(/"/g,"").trim(),
+                        rank: hasRank ? parseInt(rRaw) : 999,
+                        pages: parseInt((c[39]||"").replace(/\D/g,""))||0,
+                        image: `covers/${parseInt(c[0])||(i+1)}.jpg`,
+                        genre: (c[17]||"").replace(/"/g,"").trim()
+                    };
+                }).filter(b => b.title && b.title !== "Book");
+                
+                render();
+            } catch(e) { console.error(e); }
+        }
+
+        function render() {
+            const grid = document.getElementById('grid');
+            let items = [...allData];
+            
+            // STAT CALCULATION for Cards
+            const totalPages = items.reduce((a,b) => a + b.pages, 0);
+            const genreCounts = items.reduce((acc, b) => { acc[b.genre] = (acc[b.genre] || 0) + 1; return acc; }, {});
+            const topGenre = Object.entries(genreCounts).sort((a,b) => b[1] - a[1])[0];
+
+            // Sorting
+            if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
+            else if(sortMode === 'order') items.sort((a,b) => b.order - a.order);
+
+            let html = '';
+            
+            // 1. HERO STAT CARD (Top Left)
+            html += `
+            <div class="card-wide stat-card bg-blue-600 border-blue-500">
+                <p class="text-[9px] font-black uppercase opacity-75 tracking-widest">Library Status</p>
+                <div class="stat-highlight text-3xl">${items.length} Books</div>
+                <p class="text-xs font-bold opacity-90">Ranked by the committee.</p>
+            </div>`;
+
+            // 2. Loop through books
+            items.forEach((b, index) => {
+                let sizeClass = 'card-standard';
+                // Fun Sizing Logic
+                if (b.rank === 1) sizeClass = 'card-big'; // #1 is huge
+                else if (b.rank <= 3) sizeClass = 'card-tall'; // Top 3 are tall
+                else if (b.rank <= 7) sizeClass = 'card-wide'; // Top 7 are wide
+
+                html += `
+                <div class="${sizeClass} book-card group" onclick="showModal('${b.title.replace(/'/g, "\\'")}', '${b.author}', ${b.rank}, '${b.image}')">
+                    <img src="${b.image}" class="book-cover" onerror="this.src='https://placehold.jp/30/1e293b/ffffff/400x400.png?text=Cover';">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-4">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-yellow-400 mb-1">#${b.rank === 999 ? 'NR' : b.rank}</p>
+                        <p class="font-bold leading-none text-sm text-white line-clamp-2">${b.title}</p>
+                    </div>
+                    ${b.rank <= 10 ? '<div class="absolute top-2 right-2 bg-yellow-400 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">TOP 10</div>' : ''}
+                </div>`;
+
+                // 3. Inject Stats randomly
+                if (index === 5) {
+                    html += `
+                    <div class="card-standard stat-card">
+                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Pages Read</p>
+                        <div class="stat-highlight text-2xl text-white">${(totalPages/1000).toFixed(1)}k</div>
+                    </div>`;
+                }
+                if (index === 12) {
+                    html += `
+                    <div class="card-tall stat-card bg-slate-800">
+                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">The Vibe</p>
+                        <div class="stat-highlight text-2xl text-pink-500">${topGenre[0]}</div>
+                        <p class="text-[9px] text-slate-400">Makes up ${Math.round((topGenre[1]/items.length)*100)}% of reads.</p>
+                    </div>`;
+                }
+            });
+
+            grid.innerHTML = html;
+            
+            // Update buttons
+            document.getElementById('btn-rank').className = sortMode==='rank' ? "bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase transition shadow-lg" : "bg-slate-800 text-slate-400 px-4 py-2 rounded-full text-[10px] font-bold uppercase hover:bg-slate-700 transition";
+            document.getElementById('btn-order').className = sortMode==='order' ? "bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase transition shadow-lg" : "bg-slate-800 text-slate-400 px-4 py-2 rounded-full text-[10px] font-bold uppercase hover:bg-slate-700 transition";
+        }
+
+        function setSort(s) { sortMode = s; render(); }
+        function showModal(t, a, r, i) { 
+            document.getElementById('modal-title').innerText = t; 
+            document.getElementById('modal-author').innerText = a; 
+            document.getElementById('modal-rank').innerText = r === 999 ? 'Unranked' : 'Rank #'+r;
+            document.getElementById('modal-img').src = i;
+            document.getElementById('modal').classList.add('active'); 
+        }
+        load();
+    </script>
+</body>
+</html>
