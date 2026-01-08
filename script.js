@@ -21,7 +21,6 @@ async function load() {
         let totalP = 0, totalM = 0, completedCount = 0;
 
         allData = txt.split('\n').slice(1).map((r, i) => {
-            // Split CSV by comma, ignoring commas inside quotes
             const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             
             const rRaw = (c[11]||"").replace(/"/g,"").trim();
@@ -249,11 +248,11 @@ function renderCommittee() {
                 </div>
                 ${goldenPick ? `
                 <div class="text-right cursor-pointer" onclick="openModal(${goldenPick.id})">
-                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Best Contribution</p>
+                    <p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-1">Best Contribution</p>
                     <div class="flex items-center gap-3 justify-end group">
                         <div class="text-right">
-                            <p class="text-[10px] font-bold leading-tight group-hover:text-blue-600 transition truncate w-24">${goldenPick.title}</p>
-                            <p class="text-[9px] font-black text-slate-300 group-hover:text-blue-400">Ranked #${goldenPick.rank}</p>
+                            <p class="text-[10px] font-black leading-tight group-hover:text-blue-600 transition truncate w-24 text-slate-900">${goldenPick.title}</p>
+                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-blue-500 mt-0.5">Ranked #${goldenPick.rank}</p>
                         </div>
                         <img src="${goldenPick.img}" class="w-10 h-10 rounded object-cover shadow-sm border group-hover:scale-110 transition flex-shrink-0">
                     </div>
