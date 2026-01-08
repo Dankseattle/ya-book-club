@@ -22,7 +22,6 @@ async function load() {
 
         allData = txt.split('\n').slice(1).map((r, i) => {
             const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            
             const rRaw = (c[11]||"").replace(/"/g,"").trim();
             const hasRank = rRaw && rRaw !== 'N/A';
             const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
@@ -68,9 +67,9 @@ function renderFeatures() {
             <div class="hero-card" onclick="openModal(${lastRead.id})">
                 <img src="${lastRead.img}" class="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0">
                 <div class="flex-grow min-w-0">
-                    <p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">Last Read</p>
-                    <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900 truncate">${lastRead.title}</h3>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2 truncate">${lastRead.author}</p>
+                    <p class="text-[9px] font-bold uppercase text-slate-500 mb-1 tracking-widest">Last Read</p>
+                    <h3 class="font-extrabold text-sm uppercase leading-none mb-1 text-slate-900 truncate">${lastRead.title}</h3>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2 truncate">${lastRead.author}</p>
                     <span class="inline-block px-2 py-0.5 bg-slate-900 text-white text-[8px] font-bold uppercase rounded">Ranked #${lastRead.rank}</span>
                 </div>
             </div>`;
@@ -81,9 +80,9 @@ function renderFeatures() {
             <div class="hero-card hero-pulse" onclick="openModal(${rd.id})">
                 <img src="${rd.img}" class="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0">
                 <div class="flex-grow min-w-0">
-                    <p class="text-[9px] font-black uppercase text-blue-600 mb-1 tracking-widest">Reading Now</p>
-                    <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900 truncate">${rd.title}</h3>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2 truncate">${rd.author}</p>
+                    <p class="text-[9px] font-bold uppercase text-blue-600 mb-1 tracking-widest">Reading Now</p>
+                    <h3 class="font-extrabold text-sm uppercase leading-none mb-1 text-slate-900 truncate">${rd.title}</h3>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2 truncate">${rd.author}</p>
                     <span class="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold uppercase rounded">Active</span>
                 </div>
             </div>`;
@@ -94,9 +93,9 @@ function renderFeatures() {
             <div class="hero-card opacity-80" onclick="openModal(${nx.id})">
                 <img src="${nx.img}" class="w-16 h-16 rounded-lg object-cover grayscale flex-shrink-0">
                 <div class="flex-grow min-w-0">
-                    <p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">Up Next</p>
-                    <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-500 truncate">${nx.title}</h3>
-                    <p class="text-[10px] font-bold text-slate-300 uppercase mb-2 truncate">${nx.author}</p>
+                    <p class="text-[9px] font-bold uppercase text-slate-500 mb-1 tracking-widest">Up Next</p>
+                    <h3 class="font-extrabold text-sm uppercase leading-none mb-1 text-slate-500 truncate">${nx.title}</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2 truncate">${nx.author}</p>
                     <span class="inline-block px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-bold uppercase rounded">On Deck</span>
                 </div>
             </div>`;
@@ -179,9 +178,10 @@ function renderLibrary() {
 function renderCommittee() {
     const ranked = allData.filter(b => b.rank !== 999);
     
+    // INSIGHT 1: DOMINANT GENRE
     const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
     const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
-    document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dominant Genre</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${topG[0]}</p><p class="text-xs text-slate-500 font-bold">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
+    document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Dominant Genre</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${topG[0]}</p><p class="text-xs text-slate-500 font-bold">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
     // INSIGHT 2: THE BATTLEGROUND
     let maxSpread = 0;
@@ -200,17 +200,17 @@ function renderCommittee() {
         }
     });
 
-    // FIXED: Changed font-bold to font-medium for clearer text
     document.getElementById('insight-2').innerHTML = `
         <div class="bg-white p-6 rounded-2xl border shadow-sm h-full relative overflow-hidden group cursor-pointer flex flex-col justify-center" onclick="openModal(${divisiveBook.id})">
             <div class="relative z-10">
-                <p class="text-[9px] font-black uppercase text-red-500 tracking-widest mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> The Battleground</p>
-                <p class="text-xl font-black text-slate-900 leading-tight line-clamp-2 mt-2 font-header" title="${divisiveBook.title}">${divisiveBook.title}</p>
+                <p class="text-[9px] font-bold uppercase text-red-500 tracking-widest mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> The Battleground</p>
+                <p class="text-xl font-extrabold text-slate-900 leading-tight line-clamp-2 mt-2 font-header" title="${divisiveBook.title}">${divisiveBook.title}</p>
                 <p class="text-xs text-slate-500 font-medium mt-1">${divisiveBook.spread} spot disagreement</p>
             </div>
             <img src="${divisiveBook.img}" class="absolute right-[-20px] bottom-[-20px] w-28 h-28 object-cover rounded-full opacity-10 group-hover:opacity-30 group-hover:scale-110 transition duration-300 pointer-events-none">
         </div>`;
 
+    // INSIGHT 3: BEST SELECTOR
     let bestSelector = {name:'-', score: 1000};
     members.forEach(m => {
         const picks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
@@ -219,9 +219,10 @@ function renderCommittee() {
             if(avg < bestSelector.score) bestSelector = {name: m.n, score: avg};
         }
     });
-    document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Best Selector</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${bestSelector.name}</p><p class="text-xs text-slate-500 font-bold">Avg Pick Rank: #${Math.round(bestSelector.score)}</p></div>`;
+    document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Best Selector</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${bestSelector.name}</p><p class="text-xs text-slate-500 font-bold">Avg Pick Rank: #${Math.round(bestSelector.score)}</p></div>`;
 
 
+    // MEMBER PROFILES
     document.getElementById('member-grid').innerHTML = members.map((m, i) => {
         const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()) && b.rank !== 999);
         const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
@@ -230,7 +231,6 @@ function renderCommittee() {
         const faves = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5);
         const hates = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>b.scores[i]-a.scores[i]).slice(0,5);
 
-        // FIXED: "Ranked" text and Hall of Shame/Fame badges
         return `
         <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div class="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
@@ -246,7 +246,7 @@ function renderCommittee() {
                     <p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-1">Best Contribution</p>
                     <div class="flex items-center gap-3 justify-end group">
                         <div class="text-right">
-                            <p class="text-[10px] font-black leading-tight group-hover:text-blue-600 transition truncate w-24 text-slate-900">${goldenPick.title}</p>
+                            <p class="text-[10px] font-extrabold leading-tight group-hover:text-blue-600 transition truncate w-24 text-slate-900">${goldenPick.title}</p>
                             <p class="text-[10px] font-bold text-slate-500 group-hover:text-blue-500 mt-0.5">Ranked #${goldenPick.rank}</p>
                         </div>
                         <img src="${goldenPick.img}" class="w-10 h-10 rounded object-cover shadow-sm border group-hover:scale-110 transition flex-shrink-0">
@@ -255,7 +255,7 @@ function renderCommittee() {
             </div>
 
             <div class="p-6">
-                <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2">
+                <p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Hall of Fame (Top 5)
                 </p>
                 <div class="grid grid-cols-5 gap-3 mb-8">
@@ -267,7 +267,7 @@ function renderCommittee() {
                     `).join('')}
                 </div>
 
-                <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2">
+                <p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> Hall of Shame (Bottom 5)
                 </p>
                 <div class="grid grid-cols-5 gap-3">
