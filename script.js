@@ -21,7 +21,9 @@ async function load() {
         let totalP = 0, totalM = 0, completedCount = 0;
 
         allData = txt.split('\n').slice(1).map((r, i) => {
+            // Split CSV by comma, ignoring commas inside quotes
             const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            
             const rRaw = (c[11]||"").replace(/"/g,"").trim();
             const hasRank = rRaw && rRaw !== 'N/A';
             const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
@@ -186,7 +188,7 @@ function renderCommittee() {
     const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
     document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dominant Genre</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${topG[0]}</p><p class="text-xs text-slate-500 font-bold">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
-    // INSIGHT 2: THE BATTLEGROUND
+    // INSIGHT 2: THE BATTLEGROUND (Most Divisive Book)
     let maxSpread = 0;
     let divisiveBook = { title: '-', spread: 0 };
     
@@ -230,6 +232,8 @@ function renderCommittee() {
         const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()) && b.rank !== 999);
         const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
         const goldenPick = myPicks.sort((a,b)=>a.rank - b.rank)[0];
+        
+        // Stats: Faves and Hates
         const faves = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5);
         const hates = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>b.scores[i]-a.scores[i]).slice(0,5);
 
@@ -264,7 +268,7 @@ function renderCommittee() {
                     ${faves.map(b => `
                         <div class="cursor-pointer group relative" onclick="openModal(${b.id})">
                             <img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm group-hover:scale-105 transition">
-                            <div class="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-sm border-2 border-white">#${b.scores[i]}</div>
+                            <div class="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -276,7 +280,7 @@ function renderCommittee() {
                     ${hates.map(b => `
                         <div class="cursor-pointer group relative" onclick="openModal(${b.id})">
                             <img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition">
-                            <div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-sm border-2 border-white">#${b.scores[i]}</div>
+                            <div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
                         </div>
                     `).join('')}
                 </div>
