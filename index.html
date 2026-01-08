@@ -10,10 +10,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
         
-        /* Stats Bar */
-        .stats-bar { background: #ffffff; border-bottom: 1px solid #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
-        .stat-val { color: #0f172a; margin-left: 4px; }
-
         /* Sticky Header */
         .sticky-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
         
@@ -32,7 +28,7 @@
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
-        /* Hero Cards (Reading/Next) */
+        /* Hero Cards */
         .hero-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; cursor: pointer; }
         .hero-card:hover { transform: scale(1.02); }
         .hero-pulse { border: 2px solid #2563eb; animation: pulse-border 3s infinite; }
@@ -89,7 +85,6 @@
                             <option value="huber">Huber</option>
                             <option value="lattanzio">Lattanzio</option>
                             <option value="walco">Walco</option>
-                            <option value="driscoll">Driscoll</option>
                         </select>
                     </div>
                 </div>
@@ -130,7 +125,7 @@
     </main>
 
     <div id="modal" onclick="closeModal()">
-        <div id="modal-content" class="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl relative p-8 text-center" onclick="event.stopPropagation()">
+        <div id="modal-content" class="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl relative p-8 text-center" onclick="event.stopPropagation()">
             <img id="m-img" class="w-32 h-32 mx-auto rounded-lg shadow-md mb-4 object-cover">
             <h2 id="m-title" class="text-xl font-black uppercase leading-tight mb-1"></h2>
             <p id="m-author" class="text-xs font-bold text-slate-400 uppercase mb-4"></p>
@@ -138,7 +133,7 @@
                 <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Rank</p><p id="m-rank" class="text-lg font-black text-blue-600">#1</p></div>
                 <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Pages</p><p id="m-pages" class="text-lg font-black text-slate-800">320</p></div>
             </div>
-            <div id="m-scores" class="grid grid-cols-5 gap-1"></div>
+            <div id="m-scores" class="grid grid-cols-4 gap-2"></div>
         </div>
     </div>
 
@@ -147,8 +142,15 @@
         let sortMode = 'rank';
         let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
-        const members = [{id:'kirk',n:'Kirk'},{id:'huber',n:'Huber'},{id:'lattanzio',n:'Lat'},{id:'walco',n:'Walco'},{id:'driscoll',n:'Dris'}];
-        const memberIds = ['kirk','huber','lattanzio','walco','driscoll'];
+        
+        // REMOVED DRISCOLL (Index 4 / Column 7)
+        const members = [
+            {id:'kirk', n:'Kirk'},
+            {id:'huber', n:'Huber'},
+            {id:'lattanzio', n:'Lattanzio'},
+            {id:'walco', n:'Walco'}
+        ];
+        const memberIds = ['kirk','huber','lattanzio','walco'];
 
         function formatTime(m) {
             if(!m) return "0m";
@@ -160,9 +162,7 @@
             const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`);
             const txt = await res.text();
             
-            let totalP = 0;
-            let totalM = 0;
-            let completedCount = 0;
+            let totalP = 0, totalM = 0, completedCount = 0;
 
             allData = txt.split('\n').slice(1).map((r, i) => {
                 const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -171,11 +171,7 @@
                 const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
                 const mins = parseInt((c[40]||"0").replace(/\D/g,"")) || 0;
                 
-                if (hasRank) {
-                    totalP += pgs;
-                    totalM += mins;
-                    completedCount++;
-                }
+                if (hasRank) { totalP += pgs; totalM += mins; completedCount++; }
 
                 return {
                     id: parseInt(c[0])||(i+1),
@@ -185,14 +181,19 @@
                     genre: (c[17]||"Other").replace(/"/g,""),
                     pages: pgs,
                     length: mins,
-                    status: (c[41]||"").trim().toLowerCase(), // Status Column
+                    status: (c[41]||"").trim().toLowerCase(),
                     img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
                     selector: (c[16]||"").replace(/"/g,""),
-                    scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999, parseInt(c[7])||999]
+                    // Only getting Columns 3, 4, 5, 6 (Kirk, Huber, Lat, Walco)
+                    scores: [
+                        parseInt(c[3])||999, 
+                        parseInt(c[4])||999, 
+                        parseInt(c[5])||999, 
+                        parseInt(c[6])||999
+                    ]
                 };
             }).filter(b => b.title && b.title !== "Book");
 
-            // Update Top Stats Bar
             document.getElementById('stat-count').innerText = completedCount;
             document.getElementById('stat-pages').innerText = totalP.toLocaleString();
             document.getElementById('stat-mins').innerText = formatTime(totalM);
@@ -239,28 +240,24 @@
             const grid = document.getElementById('grid');
             const term = document.getElementById('searchInput').value.toLowerCase();
             
-            // Filter
             let items = allData.filter(b => 
                 (filterGenre === 'All' || b.genre === filterGenre) &&
                 (b.title.toLowerCase().includes(term) || b.author.toLowerCase().includes(term))
             );
 
-            // Sort
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
-            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id); // Ascending
+            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id);
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
             else { 
                 const mIdx = memberIds.indexOf(sortMode);
                 items.sort((a,b) => a.scores[mIdx] - b.scores[mIdx]);
             }
 
-            // Draw
             grid.innerHTML = items.map(b => {
                 let displayRank = b.rank === 999 ? '-' : `#${b.rank}`;
                 let displayLabel = 'Consensus';
                 let badgeHTML = '';
 
-                // Dynamic Logic
                 if (memberIds.includes(sortMode)) {
                     const mIdx = memberIds.indexOf(sortMode);
                     const score = b.scores[mIdx];
@@ -303,17 +300,14 @@
         function renderCommittee() {
             const ranked = allData.filter(b => b.rank !== 999);
             
-            // Insight 1: Genre
             const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
             const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
             document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Dominant Genre</p><p class="text-2xl font-black text-slate-900 mt-1">${topG[0]}</p><p class="text-xs text-slate-500 mt-1">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
-            // Insight 2: Sweet Spot
             const short = ranked.filter(b=>b.pages<350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages<350).length;
             const long = ranked.filter(b=>b.pages>=350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages>=350).length;
             document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Sweet Spot</p><p class="text-2xl font-black text-slate-900 mt-1">${short < long ? "< 350 Pages" : "350+ Pages"}</p><p class="text-xs text-slate-500 mt-1">Highest rated length</p></div>`;
 
-            // Insight 3: Total
             document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Total Read</p><p class="text-2xl font-black text-slate-900 mt-1">${ranked.length}</p><p class="text-xs text-slate-500 mt-1">Books Ranked</p></div>`;
 
             document.getElementById('member-grid').innerHTML = members.map((m, i) => {
@@ -379,9 +373,9 @@
             document.getElementById('m-pages').innerText = b.pages;
             
             document.getElementById('m-scores').innerHTML = members.map((m,i) => `
-                <div class="bg-slate-50 p-1 rounded text-center border">
-                    <div class="text-[6px] font-bold uppercase text-slate-400">${m.n.substr(0,3)}</div>
-                    <div class="text-[10px] font-black">${b.scores[i]===999?'-':b.scores[i]}</div>
+                <div class="bg-slate-50 p-2 rounded text-center border">
+                    <div class="text-[7px] font-bold uppercase text-slate-400 mb-1">${m.n}</div>
+                    <div class="text-sm font-black text-slate-900">${b.scores[i]===999?'-':b.scores[i]}</div>
                 </div>
             `).join('');
             document.getElementById('modal').classList.add('active');
