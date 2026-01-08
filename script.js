@@ -63,7 +63,6 @@ function renderFeatures() {
     const rd = allData.find(b => b.status === 'reading');
     const nx = allData.find(b => b.status === 'next');
 
-    // 1. Last Read
     if (lastRead) {
             document.getElementById('hero-last').innerHTML = `
             <div class="hero-card" onclick="openModal(${lastRead.id})">
@@ -77,7 +76,6 @@ function renderFeatures() {
             </div>`;
     } else { document.getElementById('hero-last').style.display = 'none'; }
 
-    // 2. Reading
     if (rd) {
         document.getElementById('hero-reading').innerHTML = `
             <div class="hero-card hero-pulse" onclick="openModal(${rd.id})">
@@ -91,7 +89,6 @@ function renderFeatures() {
             </div>`;
     } else { document.getElementById('hero-reading').style.display = 'none'; }
 
-    // 3. Up Next
     if (nx) {
         document.getElementById('hero-next').innerHTML = `
             <div class="hero-card opacity-80" onclick="openModal(${nx.id})">
@@ -182,12 +179,11 @@ function renderLibrary() {
 function renderCommittee() {
     const ranked = allData.filter(b => b.rank !== 999);
     
-    // INSIGHT 1: DOMINANT GENRE
     const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
     const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
     document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dominant Genre</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${topG[0]}</p><p class="text-xs text-slate-500 font-bold">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
-    // INSIGHT 2: THE BATTLEGROUND (Most Divisive Book)
+    // INSIGHT 2: THE BATTLEGROUND
     let maxSpread = 0;
     let divisiveBook = { title: '-', spread: 0 };
     
@@ -204,17 +200,17 @@ function renderCommittee() {
         }
     });
 
+    // FIXED: Changed font-bold to font-medium for clearer text
     document.getElementById('insight-2').innerHTML = `
         <div class="bg-white p-6 rounded-2xl border shadow-sm h-full relative overflow-hidden group cursor-pointer flex flex-col justify-center" onclick="openModal(${divisiveBook.id})">
             <div class="relative z-10">
                 <p class="text-[9px] font-black uppercase text-red-500 tracking-widest mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> The Battleground</p>
                 <p class="text-xl font-black text-slate-900 leading-tight line-clamp-2 mt-2 font-header" title="${divisiveBook.title}">${divisiveBook.title}</p>
-                <p class="text-xs text-slate-500 font-bold mt-1">${divisiveBook.spread} spot disagreement</p>
+                <p class="text-xs text-slate-500 font-medium mt-1">${divisiveBook.spread} spot disagreement</p>
             </div>
             <img src="${divisiveBook.img}" class="absolute right-[-20px] bottom-[-20px] w-28 h-28 object-cover rounded-full opacity-10 group-hover:opacity-30 group-hover:scale-110 transition duration-300 pointer-events-none">
         </div>`;
 
-    // INSIGHT 3: BEST SELECTOR
     let bestSelector = {name:'-', score: 1000};
     members.forEach(m => {
         const picks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
@@ -226,16 +222,15 @@ function renderCommittee() {
     document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Best Selector</p><p class="text-3xl font-black text-slate-900 mt-2 mb-1 font-header">${bestSelector.name}</p><p class="text-xs text-slate-500 font-bold">Avg Pick Rank: #${Math.round(bestSelector.score)}</p></div>`;
 
 
-    // MEMBER PROFILES
     document.getElementById('member-grid').innerHTML = members.map((m, i) => {
         const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()) && b.rank !== 999);
         const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
         const goldenPick = myPicks.sort((a,b)=>a.rank - b.rank)[0];
         
-        // Stats: Faves and Hates
         const faves = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5);
         const hates = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>b.scores[i]-a.scores[i]).slice(0,5);
 
+        // FIXED: "Ranked" text and Hall of Shame/Fame badges
         return `
         <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div class="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
@@ -267,7 +262,7 @@ function renderCommittee() {
                     ${faves.map(b => `
                         <div class="cursor-pointer group relative" onclick="openModal(${b.id})">
                             <img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm group-hover:scale-105 transition">
-                            <div class="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
+                            <div class="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -279,7 +274,7 @@ function renderCommittee() {
                     ${hates.map(b => `
                         <div class="cursor-pointer group relative" onclick="openModal(${b.id})">
                             <img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition">
-                            <div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
+                            <div class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div>
                         </div>
                     `).join('')}
                 </div>
