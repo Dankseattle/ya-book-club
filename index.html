@@ -10,6 +10,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
         
+        /* Stats Bar */
+        .stats-bar { background: #ffffff; border-bottom: 1px solid #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
+        .stat-val { color: #0f172a; margin-left: 4px; }
+
         /* Sticky Header */
         .sticky-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
         
@@ -29,7 +33,7 @@
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
         /* Hero Cards */
-        .hero-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; cursor: pointer; }
+        .hero-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; cursor: pointer; height: 100%; }
         .hero-card:hover { transform: scale(1.02); }
         .hero-pulse { border: 2px solid #2563eb; animation: pulse-border 3s infinite; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); } 70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); } 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); } }
@@ -100,7 +104,8 @@
     <main class="max-w-7xl mx-auto p-6 min-h-screen">
         
         <div id="section-library">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div id="hero-last"></div>
                 <div id="hero-reading"></div>
                 <div id="hero-next"></div>
             </div>
@@ -143,13 +148,7 @@
         let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         
-        // REMOVED DRISCOLL (Index 4 / Column 7)
-        const members = [
-            {id:'kirk', n:'Kirk'},
-            {id:'huber', n:'Huber'},
-            {id:'lattanzio', n:'Lattanzio'},
-            {id:'walco', n:'Walco'}
-        ];
+        const members = [{id:'kirk', n:'Kirk'},{id:'huber', n:'Huber'},{id:'lattanzio', n:'Lattanzio'},{id:'walco', n:'Walco'}];
         const memberIds = ['kirk','huber','lattanzio','walco'];
 
         function formatTime(m) {
@@ -184,13 +183,7 @@
                     status: (c[41]||"").trim().toLowerCase(),
                     img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
                     selector: (c[16]||"").replace(/"/g,""),
-                    // Only getting Columns 3, 4, 5, 6 (Kirk, Huber, Lat, Walco)
-                    scores: [
-                        parseInt(c[3])||999, 
-                        parseInt(c[4])||999, 
-                        parseInt(c[5])||999, 
-                        parseInt(c[6])||999
-                    ]
+                    scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999]
                 };
             }).filter(b => b.title && b.title !== "Book");
 
@@ -206,18 +199,34 @@
         }
 
         function renderFeatures() {
+            // Logic: Last Read is the book with the highest order ID that HAS a rank.
+            const rankedBooks = allData.filter(b => b.rank !== 999).sort((a,b) => b.id - a.id);
+            const lastRead = rankedBooks[0];
             const rd = allData.find(b => b.status === 'reading');
             const nx = allData.find(b => b.status === 'next');
 
+            if (lastRead) {
+                 document.getElementById('hero-last').innerHTML = `
+                    <div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.1em] ml-1">Last Read</div>
+                    <div class="hero-card" onclick="openModal(${lastRead.id})">
+                        <img src="${lastRead.img}" class="w-16 h-16 rounded-lg object-cover shadow-sm">
+                        <div>
+                            <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900 line-clamp-1">${lastRead.title}</h3>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">${lastRead.author}</p>
+                            <span class="inline-block px-2 py-0.5 bg-slate-900 text-white text-[8px] font-bold uppercase rounded">Ranked #${lastRead.rank}</span>
+                        </div>
+                    </div>`;
+            }
+
             if (rd) {
                 document.getElementById('hero-reading').innerHTML = `
-                    <div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.1em] ml-1">Currently Reading</div>
+                    <div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.1em] ml-1">Reading Now</div>
                     <div class="hero-card hero-pulse" onclick="openModal(${rd.id})">
                         <img src="${rd.img}" class="w-16 h-16 rounded-lg object-cover shadow-sm">
                         <div>
                             <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900 line-clamp-1">${rd.title}</h3>
                             <p class="text-[10px] font-bold text-slate-400 uppercase">${rd.author}</p>
-                            <span class="inline-block mt-2 px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold uppercase rounded">Reading Now</span>
+                            <span class="inline-block mt-2 px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold uppercase rounded">Active</span>
                         </div>
                     </div>`;
             }
