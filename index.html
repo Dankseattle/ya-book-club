@@ -10,6 +10,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
         
+        /* Stats Bar */
+        .stats-bar { background: #ffffff; border-bottom: 1px solid #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
+        .stat-val { color: #0f172a; margin-left: 4px; }
+
         /* Sticky Header */
         .sticky-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
         
@@ -28,6 +32,12 @@
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
+        /* Hero Cards (Reading/Next) */
+        .hero-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; cursor: pointer; }
+        .hero-card:hover { transform: scale(1.02); }
+        .hero-pulse { border: 2px solid #2563eb; animation: pulse-border 3s infinite; }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); } 70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); } 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); } }
+
         /* Badges */
         .genre-pill { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .rank-badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 99px; font-size: 9px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -44,6 +54,17 @@
     </style>
 </head>
 <body>
+
+    <div class="stats-bar py-2 px-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex gap-6">
+                <span>Books <span id="stat-count" class="stat-val">-</span></span>
+                <span>Pages <span id="stat-pages" class="stat-val">-</span></span>
+                <span>Time <span id="stat-mins" class="stat-val">-</span></span>
+            </div>
+            <div class="hidden sm:block"><span class="w-1.5 h-1.5 bg-green-500 rounded-full inline-block mr-2"></span>Database Live</div>
+        </div>
+    </div>
 
     <header class="sticky-header pt-6 pb-4 px-4">
         <div class="max-w-7xl mx-auto flex flex-col items-center">
@@ -82,11 +103,18 @@
     </header>
 
     <main class="max-w-7xl mx-auto p-6 min-h-screen">
+        
         <div id="section-library">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div id="hero-reading"></div>
+                <div id="hero-next"></div>
+            </div>
+
             <div class="flex justify-between items-end border-b pb-4 mb-8">
                 <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Full Collection</h2>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><span id="count-display" class="text-slate-900">0</span> Books</p>
             </div>
+            
             <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5"></div>
         </div>
 
@@ -122,29 +150,89 @@
         const members = [{id:'kirk',n:'Kirk'},{id:'huber',n:'Huber'},{id:'lattanzio',n:'Lat'},{id:'walco',n:'Walco'},{id:'driscoll',n:'Dris'}];
         const memberIds = ['kirk','huber','lattanzio','walco','driscoll'];
 
+        function formatTime(m) {
+            if(!m) return "0m";
+            const h = Math.floor(m/60);
+            return h > 0 ? `${h}h ${m%60}m` : `${m}m`;
+        }
+
         async function load() {
             const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`);
             const txt = await res.text();
+            
+            let totalP = 0;
+            let totalM = 0;
+            let completedCount = 0;
+
             allData = txt.split('\n').slice(1).map((r, i) => {
                 const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 const rRaw = (c[11]||"").replace(/"/g,"").trim();
+                const hasRank = rRaw && rRaw !== 'N/A';
+                const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
+                const mins = parseInt((c[40]||"0").replace(/\D/g,"")) || 0;
+                
+                if (hasRank) {
+                    totalP += pgs;
+                    totalM += mins;
+                    completedCount++;
+                }
+
                 return {
                     id: parseInt(c[0])||(i+1),
                     title: (c[1]||"").replace(/"/g,""),
                     author: (c[2]||"").replace(/"/g,""),
-                    rank: rRaw && rRaw!=='N/A' ? parseInt(rRaw) : 999,
+                    rank: hasRank ? parseInt(rRaw) : 999,
                     genre: (c[17]||"Other").replace(/"/g,""),
-                    pages: parseInt((c[39]||"0").replace(/\D/g,"")),
+                    pages: pgs,
+                    length: mins,
+                    status: (c[41]||"").trim().toLowerCase(), // Status Column
                     img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
                     selector: (c[16]||"").replace(/"/g,""),
                     scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999, parseInt(c[7])||999]
                 };
             }).filter(b => b.title && b.title !== "Book");
 
+            // Update Top Stats Bar
+            document.getElementById('stat-count').innerText = completedCount;
+            document.getElementById('stat-pages').innerText = totalP.toLocaleString();
+            document.getElementById('stat-mins').innerText = formatTime(totalM);
             document.getElementById('count-display').innerText = allData.length;
+
+            renderFeatures();
             renderLibrary();
             renderCommittee();
             updateNavUI();
+        }
+
+        function renderFeatures() {
+            const rd = allData.find(b => b.status === 'reading');
+            const nx = allData.find(b => b.status === 'next');
+
+            if (rd) {
+                document.getElementById('hero-reading').innerHTML = `
+                    <div class="text-[9px] font-black uppercase text-blue-600 mb-2 tracking-[0.1em] ml-1">Currently Reading</div>
+                    <div class="hero-card hero-pulse" onclick="openModal(${rd.id})">
+                        <img src="${rd.img}" class="w-16 h-16 rounded-lg object-cover shadow-sm">
+                        <div>
+                            <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-900 line-clamp-1">${rd.title}</h3>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">${rd.author}</p>
+                            <span class="inline-block mt-2 px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold uppercase rounded">Reading Now</span>
+                        </div>
+                    </div>`;
+            }
+
+            if (nx) {
+                document.getElementById('hero-next').innerHTML = `
+                    <div class="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-[0.1em] ml-1">Up Next</div>
+                    <div class="hero-card opacity-80" onclick="openModal(${nx.id})">
+                        <img src="${nx.img}" class="w-16 h-16 rounded-lg object-cover grayscale">
+                        <div>
+                            <h3 class="font-black text-sm uppercase leading-none mb-1 text-slate-500 line-clamp-1">${nx.title}</h3>
+                            <p class="text-[10px] font-bold text-slate-300 uppercase">${nx.author}</p>
+                            <span class="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-bold uppercase rounded">On Deck</span>
+                        </div>
+                    </div>`;
+            }
         }
 
         function renderLibrary() {
@@ -157,9 +245,9 @@
                 (b.title.toLowerCase().includes(term) || b.author.toLowerCase().includes(term))
             );
 
-            // Sort logic
+            // Sort
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
-            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id); // Fixed: Ascending Order (1 -> End)
+            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id); // Ascending
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
             else { 
                 const mIdx = memberIds.indexOf(sortMode);
