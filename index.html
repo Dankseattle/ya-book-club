@@ -199,7 +199,6 @@
         }
 
         function renderFeatures() {
-            // Logic: Last Read is the book with the highest order ID that HAS a rank.
             const rankedBooks = allData.filter(b => b.rank !== 999).sort((a,b) => b.id - a.id);
             const lastRead = rankedBooks[0];
             const rd = allData.find(b => b.status === 'reading');
@@ -311,26 +310,78 @@
             
             const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
             const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
-            document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Dominant Genre</p><p class="text-2xl font-black text-slate-900 mt-1">${topG[0]}</p><p class="text-xs text-slate-500 mt-1">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
+            document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full"><p class="text-[9px] font-black uppercase text-slate-400">Dominant Genre</p><p class="text-2xl font-black text-slate-900 mt-1">${topG[0]}</p><p class="text-xs text-slate-500 mt-1">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
 
             const short = ranked.filter(b=>b.pages<350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages<350).length;
             const long = ranked.filter(b=>b.pages>=350).reduce((a,b)=>a+b.rank,0) / ranked.filter(b=>b.pages>=350).length;
-            document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Sweet Spot</p><p class="text-2xl font-black text-slate-900 mt-1">${short < long ? "< 350 Pages" : "350+ Pages"}</p><p class="text-xs text-slate-500 mt-1">Highest rated length</p></div>`;
+            document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full"><p class="text-[9px] font-black uppercase text-slate-400">Sweet Spot</p><p class="text-2xl font-black text-slate-900 mt-1">${short < long ? "< 350 Pages" : "350+ Pages"}</p><p class="text-xs text-slate-500 mt-1">Highest rated length</p></div>`;
 
-            document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm"><p class="text-[9px] font-black uppercase text-slate-400">Total Read</p><p class="text-2xl font-black text-slate-900 mt-1">${ranked.length}</p><p class="text-xs text-slate-500 mt-1">Books Ranked</p></div>`;
+            let bestSelector = {name:'-', score: 1000};
+            members.forEach(m => {
+                const picks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
+                if(picks.length > 0) {
+                    const avg = picks.reduce((a,b)=>a+b.rank,0) / picks.length;
+                    if(avg < bestSelector.score) bestSelector = {name: m.n, score: avg};
+                }
+            });
+            document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full"><p class="text-[9px] font-black uppercase text-slate-400">Best Selector</p><p class="text-2xl font-black text-slate-900 mt-1">${bestSelector.name}</p><p class="text-xs text-slate-500 mt-1">Avg Pick Rank: #${Math.round(bestSelector.score)}</p></div>`;
+
 
             document.getElementById('member-grid').innerHTML = members.map((m, i) => {
-                const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
+                const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()) && b.rank !== 999);
+                const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
+                const goldenPick = myPicks.sort((a,b)=>a.rank - b.rank)[0];
+
+                const faves = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5);
+                const hates = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>b.scores[i]-a.scores[i]).slice(0,5);
+
                 return `
-                <div class="bg-white p-6 rounded-2xl border shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-black uppercase italic">${m.n}</h3>
-                        <span class="text-[9px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">${myPicks.length} Picks</span>
+                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-2xl font-black uppercase italic text-slate-900">${m.n}</h3>
+                            <div class="flex gap-3 mt-1">
+                                <span class="text-[9px] font-bold bg-white border px-2 py-1 rounded text-slate-500">Picked ${myPicks.length} Books</span>
+                                <span class="text-[9px] font-bold bg-blue-50 border border-blue-100 px-2 py-1 rounded text-blue-600">Avg. Pick Rank #${avgPickRank}</span>
+                            </div>
+                        </div>
+                        ${goldenPick ? `
+                        <div class="text-right cursor-pointer" onclick="openModal(${goldenPick.id})">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Best Contribution</p>
+                            <div class="flex items-center gap-3 justify-end group">
+                                <div class="text-right">
+                                    <p class="text-[10px] font-bold leading-tight group-hover:text-blue-600 transition">${goldenPick.title}</p>
+                                    <p class="text-[9px] font-black text-slate-300 group-hover:text-blue-400">Ranked #${goldenPick.rank}</p>
+                                </div>
+                                <img src="${goldenPick.img}" class="w-10 h-10 rounded object-cover shadow-sm border group-hover:scale-110 transition">
+                            </div>
+                        </div>` : ''}
                     </div>
-                    <div class="grid grid-cols-5 gap-2">
-                        ${allData.filter(b=>b.scores[i]<=5).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5).map(b => 
-                            `<img src="${b.img}" class="rounded-md object-cover w-full h-auto border aspect-square" onclick="openModal(${b.id})">`
-                        ).join('')}
+
+                    <div class="p-6">
+                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Hall of Fame (Top 5)
+                        </p>
+                        <div class="grid grid-cols-5 gap-3 mb-8">
+                            ${faves.map(b => `
+                                <div class="cursor-pointer group relative" onclick="openModal(${b.id})">
+                                    <img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm group-hover:scale-105 transition">
+                                    <div class="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-sm border-2 border-white">#${b.scores[i]}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> Hall of Shame (Bottom 5)
+                        </p>
+                        <div class="grid grid-cols-1 gap-1">
+                            ${hates.map(b => `
+                                <div class="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 px-2 rounded transition" onclick="openModal(${b.id})">
+                                    <span class="text-[10px] font-bold text-slate-600 truncate w-3/4">${b.title}</span>
+                                    <span class="text-[9px] font-black text-red-400">Ranked #${b.scores[i]}</span>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>`;
             }).join('');
