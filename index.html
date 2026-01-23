@@ -36,18 +36,20 @@
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
-        /* Hero Cards & Scroll Snap (Mobile Swipe) */
-        .hero-scroller { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-        @media (min-width: 768px) { .hero-scroller { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 767px) {
-            .hero-scroller {
-                display: flex; overflow-x: auto; scroll-snap-type: x mandatory; 
-                padding-bottom: 1rem; margin: 0 -1.5rem; padding: 0 1.5rem 1rem 1.5rem;
-                -ms-overflow-style: none; scrollbar-width: none;
-            }
-            .hero-scroller::-webkit-scrollbar { display: none; }
-            .hero-wrapper { min-width: 85vw; scroll-snap-align: center; }
+        /* Hero Cards - Stacked on Mobile, Grid on Desktop */
+        /* UPDATED: Removed swipe logic, now simply stacks vertically on mobile */
+        .hero-scroller { 
+            display: grid; 
+            grid-template-columns: 1fr; /* Default: Stacked (1 column) */
+            gap: 1rem; 
         }
+        @media (min-width: 768px) { 
+            .hero-scroller { 
+                grid-template-columns: repeat(3, 1fr); /* Desktop: 3 columns */
+                gap: 1.5rem; 
+            } 
+        }
+        .hero-wrapper { width: 100%; }
 
         .hero-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; cursor: pointer; height: 100%; width: 100%; }
         .hero-card:hover { transform: scale(1.02); }
@@ -162,7 +164,7 @@
     <script>
         let allData = [];
         let sortMode = 'rank';
-        let sortDirection = 'asc'; // New state for direction
+        let sortDirection = 'asc';
         let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         const members = [{id:'kirk', n:'Kirk'},{id:'huber', n:'Huber'},{id:'lattanzio', n:'Lattanzio'},{id:'walco', n:'Walco'}];
@@ -405,7 +407,6 @@
                 const btn = document.getElementById('btn-'+id);
                 btn.className = sortMode === id ? "btn-active px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition shadow-md" : "px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500 hover:bg-slate-50";
                 
-                // Set text with arrow if it's the Order button and active
                 if (id === 'order') {
                     if (sortMode === 'order') {
                         btn.innerHTML = sortDirection === 'asc' ? 'Order &uarr;' : 'Order &darr;';
@@ -422,10 +423,8 @@
 
         function setSort(s) { 
             if (s === 'order' && sortMode === 'order') {
-                // If clicking order again, flip direction
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
-                // Default reset
                 sortMode = s;
                 sortDirection = 'asc';
             }
