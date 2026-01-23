@@ -36,7 +36,7 @@
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
-        /* Hero Cards - Stacked on Mobile, Grid on Desktop */
+        /* Hero Cards */
         .hero-scroller { 
             display: grid; 
             grid-template-columns: 1fr; /* Default: Stacked (1 column) */
@@ -60,6 +60,9 @@
         .rank-badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 99px; font-size: 9px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .badge-gold { background: #fbbf24; color: black; } 
         .badge-blue { background: #2563eb; color: white; }
+
+        /* Chart Tooltip */
+        #chart-tooltip { position: absolute; pointer-events: none; background: rgba(15, 23, 42, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; z-index: 50; display: none; transform: translate(-50%, -120%); white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 
         /* Utilities */
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
@@ -137,6 +140,23 @@
         </div>
 
         <div id="section-committee" class="hidden-section">
+            
+            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 mb-8 relative">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold uppercase italic text-slate-900 font-header">Club vs. The World</h3>
+                        <p class="text-[10px] font-medium text-slate-400 mt-1">Comparing Club Rank (X) vs. Goodreads Rank (Y)</p>
+                    </div>
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Top Left = Universal Acclaim</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Bottom Right = Universal Dislike</p>
+                    </div>
+                </div>
+                <div id="scatter-container" class="w-full h-64 sm:h-80 relative cursor-crosshair">
+                    <div id="chart-tooltip"></div>
+                    </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                 <div id="insight-1"></div>
                 <div id="insight-2"></div>
@@ -187,6 +207,11 @@
                     const hasRank = rRaw && rRaw !== 'N/A';
                     const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
                     const mins = parseInt((c[40]||"0").replace(/\D/g,"")) || 0;
+                    
+                    // Parse Goodreads Rank (Column AL = Index 37)
+                    let grRankRaw = (c[37]||"").replace(/"/g,"").trim();
+                    let grRank = (grRankRaw && !isNaN(parseInt(grRankRaw))) ? parseInt(grRankRaw) : null;
+
                     if (hasRank) { totalP += pgs; totalM += mins; completedCount++; }
 
                     return {
@@ -197,7 +222,8 @@
                         genre: (c[17]||"Other").replace(/"/g,""),
                         pages: pgs,
                         length: mins,
-                        grRating: (c[36]||"-").replace(/"/g,"").trim(), // Column AK (Index 36)
+                        grRating: (c[36]||"-").replace(/"/g,"").trim(),
+                        grRank: grRank,
                         status: (c[41]||"").trim().toLowerCase(),
                         img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
                         selector: (c[16]||"").replace(/"/g,""),
@@ -212,6 +238,74 @@
 
                 renderFeatures(); renderLibrary(); renderCommittee(); updateNavUI();
             } catch (e) { console.error("Error loading data:", e); }
+        }
+
+        function renderScatterPlot(books) {
+            const container = document.getElementById('scatter-container');
+            const tooltip = document.getElementById('chart-tooltip');
+            
+            // Filter books that have BOTH ranks
+            const plotData = books.filter(b => b.rank !== 999 && b.grRank !== null);
+            if (plotData.length === 0) { container.innerHTML = '<p class="text-center text-slate-400 py-10">Not enough data for chart</p>'; return; }
+
+            const maxRank = Math.max(
+                Math.max(...plotData.map(b => b.rank)),
+                Math.max(...plotData.map(b => b.grRank))
+            );
+            
+            // Margins
+            const pad = 30;
+            const w = container.offsetWidth;
+            const h = container.offsetHeight;
+            const drawW = w - (pad*2);
+            const drawH = h - (pad*2);
+
+            let svgHtml = `<svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+            
+            // Axis Lines
+            svgHtml += `<line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#cbd5e1" stroke-width="1" />`; // X
+            svgHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#cbd5e1" stroke-width="1" />`; // Y
+            
+            // Diagonal (Agreement Line)
+            svgHtml += `<line x1="${pad}" y1="${pad}" x2="${w-pad}" y2="${h-pad}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4" />`;
+
+            // Labels
+            svgHtml += `<text x="${w/2}" y="${h-5}" text-anchor="middle" font-size="9" fill="#94a3b8" font-weight="bold" font-family="sans-serif">OUR RANK &rarr;</text>`;
+            svgHtml += `<text x="5" y="${h/2}" text-anchor="middle" transform="rotate(-90, 10, ${h/2})" font-size="9" fill="#94a3b8" font-weight="bold" font-family="sans-serif">GOODREADS RANK &rarr;</text>`;
+
+            plotData.forEach(b => {
+                // Scale values: 1 is top/left, maxRank is bottom/right
+                // Normalized 0 to 1
+                const xNorm = (b.rank - 1) / (maxRank - 1);
+                const yNorm = (b.grRank - 1) / (maxRank - 1);
+                
+                const cx = pad + (xNorm * drawW);
+                const cy = pad + (yNorm * drawH);
+                
+                svgHtml += `<circle cx="${cx}" cy="${cy}" r="4" fill="#2563eb" fill-opacity="0.6" stroke="#fff" stroke-width="1" 
+                    class="hover:fill-opacity-100 hover:r-6 hover:stroke-blue-900 transition-all cursor-pointer"
+                    data-title="${b.title}" data-ranks="Us: #${b.rank} | GR: #${b.grRank}"
+                />`;
+            });
+
+            svgHtml += `</svg>`;
+            // Keep tooltip div, append SVG
+            container.innerHTML = `<div id="chart-tooltip"></div>` + svgHtml;
+
+            // Re-select tooltip for events
+            const newTooltip = document.getElementById('chart-tooltip');
+            container.querySelectorAll('circle').forEach(c => {
+                c.addEventListener('mousemove', (e) => {
+                    const rect = container.getBoundingClientRect();
+                    newTooltip.style.display = 'block';
+                    newTooltip.style.left = (e.clientX - rect.left) + 'px';
+                    newTooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+                    newTooltip.innerHTML = `${c.getAttribute('data-title')}<br><span style="font-weight:400; opacity:0.8">${c.getAttribute('data-ranks')}</span>`;
+                });
+                c.addEventListener('mouseleave', () => {
+                    newTooltip.style.display = 'none';
+                });
+            });
         }
 
         function renderFeatures() {
@@ -312,6 +406,9 @@
         }
 
         function renderCommittee() {
+            // New Scatter Plot Render
+            renderScatterPlot(allData);
+
             const ranked = allData.filter(b => b.rank !== 999);
             const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
             const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
@@ -440,13 +537,8 @@
             document.getElementById('m-rank').innerText = b.rank === 999 ? 'NR' : '#'+b.rank;
             document.getElementById('m-pages').innerText = b.pages;
             
-            // Generate Member Scores
             const memberHtml = members.map((m,i) => `<div class="bg-slate-50 p-2 rounded text-center border"><div class="text-[7px] font-bold uppercase text-slate-400 mb-1">${m.n}</div><div class="text-sm font-bold text-slate-900">${b.scores[i]===999?'-':b.scores[i]}</div></div>`).join('');
-            
-            // Generate Goodreads Score
             const grHtml = `<div class="bg-slate-50 p-2 rounded text-center border"><div class="text-[7px] font-bold uppercase text-slate-400 mb-1">Goodreads</div><div class="text-sm font-bold text-slate-900">${b.grRating}</div></div>`;
-            
-            // Combine them
             document.getElementById('m-scores').innerHTML = memberHtml + grHtml;
             
             document.getElementById('modal').classList.add('active');
