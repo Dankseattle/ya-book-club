@@ -353,7 +353,6 @@
                 });
 
                 // 2. Determine Dynamic Thresholds (Thirds)
-                // Default to standard values if diffs is empty/weird
                 let t1 = 15, t2 = 25;
                 if(diffs.length > 0) {
                     const minDiff = Math.min(...diffs);
@@ -373,9 +372,14 @@
                 members.forEach((m1, r) => {
                     matrixHtml += `<div class="text-[8px] font-bold uppercase text-slate-500 flex items-center justify-end pr-2">${m1.n.substring(0,3)}</div>`;
                     members.forEach((m2, c) => {
-                        if (r === c) {
+                        if (c > r) {
+                            // Upper triangle hidden
+                            matrixHtml += `<div></div>`;
+                        } else if (r === c) {
+                            // Self
                             matrixHtml += `<div class="aspect-square bg-slate-50 rounded"></div>`;
                         } else {
+                            // Lower triangle - show data
                             const p = pairData.find(x => x.r === r && x.c === c);
                             const val = p ? p.val : 0;
                             
