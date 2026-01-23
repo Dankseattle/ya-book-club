@@ -162,6 +162,7 @@
     <script>
         let allData = [];
         let sortMode = 'rank';
+        let sortDirection = 'asc'; // New state for direction
         let filterGenre = 'All';
         const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
         const members = [{id:'kirk', n:'Kirk'},{id:'huber', n:'Huber'},{id:'lattanzio', n:'Lattanzio'},{id:'walco', n:'Walco'}];
@@ -265,7 +266,7 @@
             grid.style.display = 'grid'; empty.classList.add('hidden');
 
             if(sortMode === 'rank') items.sort((a,b) => a.rank - b.rank);
-            else if(sortMode === 'order') items.sort((a,b) => a.id - b.id);
+            else if(sortMode === 'order') items.sort((a,b) => sortDirection === 'asc' ? a.id - b.id : b.id - a.id);
             else if(sortMode === 'title') items.sort((a,b) => a.title.localeCompare(b.title));
             else { const mIdx = memberIds.indexOf(sortMode); items.sort((a,b) => a.scores[mIdx] - b.scores[mIdx]); }
 
@@ -400,13 +401,37 @@
         function updateNavUI() { const active = document.querySelector('.nav-item.active'); const line = document.getElementById('nav-line'); if(active && line) { line.style.width = `${active.offsetWidth}px`; line.style.left = `${active.offsetLeft}px`; } }
 
         function updateButtons() {
-            ['rank','order','title'].forEach(id => document.getElementById('btn-'+id).className = sortMode === id ? "btn-active px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition shadow-md" : "px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500 hover:bg-slate-50");
+            ['rank','order','title'].forEach(id => {
+                const btn = document.getElementById('btn-'+id);
+                btn.className = sortMode === id ? "btn-active px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition shadow-md" : "px-4 py-2 rounded-full border text-[10px] font-bold uppercase transition bg-white text-slate-500 hover:bg-slate-50";
+                
+                // Set text with arrow if it's the Order button and active
+                if (id === 'order') {
+                    if (sortMode === 'order') {
+                        btn.innerHTML = sortDirection === 'asc' ? 'Order &uarr;' : 'Order &darr;';
+                    } else {
+                        btn.innerHTML = 'Order';
+                    }
+                }
+            });
+
             ['All','Fiction','Non-Fiction'].forEach(id => document.getElementById('gen-'+id).className = filterGenre === id ? "btn-active px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition shadow-md" : "px-3 py-1 rounded-full border text-[9px] font-bold uppercase transition bg-white text-slate-400 hover:bg-slate-50");
             const dd = document.getElementById('memberSelect');
             if(memberIds.includes(sortMode)) { dd.classList.add('bg-slate-900', 'text-white'); } else { dd.classList.remove('bg-slate-900', 'text-white'); dd.value = ""; }
         }
 
-        function setSort(s) { sortMode = s; renderLibrary(); }
+        function setSort(s) { 
+            if (s === 'order' && sortMode === 'order') {
+                // If clicking order again, flip direction
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Default reset
+                sortMode = s;
+                sortDirection = 'asc';
+            }
+            renderLibrary(); 
+        }
+
         function setGenre(g) { filterGenre = g; renderLibrary(); }
         function openModal(id) {
             const b = allData.find(x => x.id === id);
