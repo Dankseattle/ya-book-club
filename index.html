@@ -62,11 +62,17 @@
         .badge-blue { background: #2563eb; color: white; }
 
         /* Chart Tooltip */
-        #chart-tooltip { position: absolute; pointer-events: none; background: rgba(15, 23, 42, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; z-index: 50; display: none; transform: translate(-50%, -120%); white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #chart-tooltip { position: fixed; pointer-events: none; background: rgba(15, 23, 42, 0.95); color: white; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; z-index: 9999; display: none; transform: translate(-50%, -120%); white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); }
 
         /* Utilities */
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
         .hidden-section { display: none !important; }
+        
+        /* Custom Scrollbar for Charts */
+        .custom-scroll::-webkit-scrollbar { height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Modal */
         #modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -143,13 +149,17 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 relative flex flex-col">
-                    <div class="flex justify-between items-end mb-4">
+                    <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-xl font-bold uppercase italic text-slate-900 font-header">Club vs. World</h3>
-                            <p class="text-[10px] font-medium text-slate-400 mt-1">Our Rank (X) vs. Goodreads (Y)</p>
+                            <h3 class="text-xl font-bold uppercase italic text-slate-900 font-header">The Rank Gap</h3>
+                            <p class="text-[10px] font-medium text-slate-400 mt-1">Difference between Our Rank (Blue) and Goodreads (Grey)</p>
+                        </div>
+                        <div class="flex gap-3 text-[9px] font-bold uppercase text-slate-400">
+                            <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Us</div>
+                            <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300"></span> Them</div>
                         </div>
                     </div>
-                    <div id="scatter-container" class="w-full flex-grow relative cursor-crosshair min-h-[250px]">
+                    <div id="gap-chart-container" class="w-full flex-grow relative overflow-x-auto custom-scroll min-h-[250px]">
                         <div id="chart-tooltip"></div>
                         </div>
                 </div>
@@ -246,91 +256,99 @@
             } catch (e) { console.error("Error loading data:", e); }
         }
 
-        function renderScatterPlot(books) {
-            const container = document.getElementById('scatter-container');
-            const plotData = books.filter(b => b.rank !== 999 && b.grRank !== null);
+        function renderRankGapChart(books) {
+            const container = document.getElementById('gap-chart-container');
+            
+            // 1. Filter and Sort by Club Rank
+            const plotData = books.filter(b => b.rank !== 999 && b.grRank !== null).sort((a,b) => a.rank - b.rank);
             if (plotData.length === 0) { container.innerHTML = '<p class="text-center text-slate-400 py-10">Not enough data for chart</p>'; return; }
 
+            // 2. Setup Dimensions
             const maxRank = Math.max(Math.max(...plotData.map(b => b.rank)), Math.max(...plotData.map(b => b.grRank)));
-            const pad = 30;
-            const w = container.offsetWidth;
-            const h = container.offsetHeight;
-            const drawW = w - (pad*2);
-            const drawH = h - (pad*2);
+            const itemWidth = 30; // Width per book
+            const h = 250; // SVG Height
+            const padTop = 20;
+            const padBot = 20;
+            const w = Math.max(container.offsetWidth, plotData.length * itemWidth); // Scrollable Width
 
-            let svgHtml = `<svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
-            svgHtml += `<line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#cbd5e1" stroke-width="1" />`; 
-            svgHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#cbd5e1" stroke-width="1" />`; 
-            svgHtml += `<line x1="${pad}" y1="${pad}" x2="${w-pad}" y2="${h-pad}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4" />`;
+            // 3. Draw SVG
+            let svgHtml = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="min-width: ${w}px;">`;
             
-            plotData.forEach(b => {
-                const xNorm = (b.rank - 1) / (maxRank - 1);
-                const yNorm = (b.grRank - 1) / (maxRank - 1);
-                const cx = pad + (xNorm * drawW);
-                const cy = pad + (yNorm * drawH);
-                svgHtml += `<circle cx="${cx}" cy="${cy}" r="4" fill="#2563eb" fill-opacity="0.6" stroke="#fff" stroke-width="1" class="hover:fill-opacity-100 hover:r-6 hover:stroke-blue-900 transition-all cursor-pointer" data-title="${b.title}" data-ranks="Us: #${b.rank} | GR: #${b.grRank}" />`;
+            // Grid lines (every 20 ranks)
+            for(let i=0; i<=maxRank; i+=20) {
+                if(i===0) continue;
+                const y = padTop + ((i / maxRank) * (h - padTop - padBot));
+                svgHtml += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="#f1f5f9" stroke-width="1" />`;
+                svgHtml += `<text x="5" y="${y+3}" font-size="8" fill="#cbd5e1" font-family="sans-serif">#${i}</text>`;
+            }
+
+            // Draw Dumbbells
+            plotData.forEach((b, i) => {
+                const x = (itemWidth/2) + (i * itemWidth);
+                const yClub = padTop + ((b.rank / maxRank) * (h - padTop - padBot));
+                const yGR = padTop + ((b.grRank / maxRank) * (h - padTop - padBot));
+                const gap = Math.abs(b.rank - b.grRank);
+                
+                // Connector Line
+                svgHtml += `<line x1="${x}" y1="${yClub}" x2="${x}" y2="${yGR}" stroke="#cbd5e1" stroke-width="1.5" />`;
+                
+                // Dots (Grouped for easier tooltip target)
+                svgHtml += `<g class="cursor-pointer group hover:opacity-100 opacity-80" data-title="${b.title}" data-gap="${gap}" data-us="${b.rank}" data-gr="${b.grRank}">
+                    <rect x="${x-10}" y="0" width="20" height="${h}" fill="transparent" />
+                    <circle cx="${x}" cy="${yGR}" r="3" fill="#cbd5e1" />
+                    <circle cx="${x}" cy="${yClub}" r="3" fill="#2563eb" />
+                </g>`;
             });
 
             svgHtml += `</svg>`;
+            
+            // Re-inject Tooltip Div
             container.innerHTML = `<div id="chart-tooltip"></div>` + svgHtml;
-            const newTooltip = document.getElementById('chart-tooltip');
-            container.querySelectorAll('circle').forEach(c => {
-                c.addEventListener('mousemove', (e) => {
-                    const rect = container.getBoundingClientRect();
-                    newTooltip.style.display = 'block';
-                    newTooltip.style.left = (e.clientX - rect.left) + 'px';
-                    newTooltip.style.top = (e.clientY - rect.top - 10) + 'px';
-                    newTooltip.innerHTML = `${c.getAttribute('data-title')}<br><span style="font-weight:400; opacity:0.8">${c.getAttribute('data-ranks')}</span>`;
+            
+            // 4. Interaction Logic
+            const tooltip = document.getElementById('chart-tooltip');
+            container.querySelectorAll('g').forEach(g => {
+                g.addEventListener('mousemove', (e) => {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = e.clientX + 'px';
+                    tooltip.style.top = (e.clientY - 40) + 'px';
+                    
+                    const t = g.getAttribute('data-title');
+                    const us = g.getAttribute('data-us');
+                    const gr = g.getAttribute('data-gr');
+                    const gap = g.getAttribute('data-gap');
+                    
+                    tooltip.innerHTML = `<span class="text-blue-200">Us: #${us}</span> <span class="text-slate-400">|</span> <span class="text-slate-300">GR: #${gr}</span><br><div class="text-white mt-1 border-t border-slate-700 pt-1">${t}</div><div class="text-[9px] text-slate-400 mt-0.5">Gap: ${gap} spots</div>`;
                 });
-                c.addEventListener('mouseleave', () => { newTooltip.style.display = 'none'; });
+                g.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
             });
         }
 
         function renderCompatibilityMatrix(books) {
             const container = document.getElementById('heatmap-container');
             const ranked = books.filter(b => b.rank !== 999);
-            
-            // Build Matrix Data
             let matrixHtml = `<div class="grid grid-cols-5 gap-1 w-full max-w-sm">`;
-            
-            // Header Row
-            matrixHtml += `<div></div>`; // Top left empty
+            matrixHtml += `<div></div>`; 
             members.forEach(m => matrixHtml += `<div class="text-[8px] font-bold uppercase text-slate-500 text-center pb-1">${m.n.substring(0,3)}</div>`);
 
             members.forEach((m1, r) => {
-                // Row Label
                 matrixHtml += `<div class="text-[8px] font-bold uppercase text-slate-500 flex items-center justify-end pr-2">${m1.n.substring(0,3)}</div>`;
-                
                 members.forEach((m2, c) => {
                     if (r === c) {
-                         // Self
                         matrixHtml += `<div class="aspect-square bg-slate-50 rounded"></div>`;
                     } else {
-                        // Calculate Diff
-                        let totalDiff = 0;
-                        let count = 0;
+                        let totalDiff = 0, count = 0;
                         ranked.forEach(b => {
                             const s1 = b.scores[r];
                             const s2 = b.scores[c];
-                            if(s1 !== 999 && s2 !== 999) {
-                                totalDiff += Math.abs(s1 - s2);
-                                count++;
-                            }
+                            if(s1 !== 999 && s2 !== 999) { totalDiff += Math.abs(s1 - s2); count++; }
                         });
                         const avgDiff = count > 0 ? Math.round(totalDiff / count) : 0;
-                        
-                        // Color Scale (Lower is better/darker)
-                        let bgClass = 'bg-slate-100 text-slate-300';
-                        if (avgDiff < 8) bgClass = 'bg-slate-900 text-white'; // High Agreement
-                        else if (avgDiff < 15) bgClass = 'bg-blue-500 text-white';
-                        else if (avgDiff < 25) bgClass = 'bg-blue-300 text-white';
-                        else bgClass = 'bg-blue-100 text-blue-900'; // Low Agreement
-
-                        matrixHtml += `<div class="${bgClass} aspect-square rounded flex items-center justify-center text-[10px] font-bold" title="${m1.n} & ${m2.n}: Avg Diff ${avgDiff}">${avgDiff}</div>`;
+                        let bgClass = avgDiff < 8 ? 'bg-slate-900 text-white' : avgDiff < 15 ? 'bg-blue-500 text-white' : avgDiff < 25 ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-900';
+                        matrixHtml += `<div class="${bgClass} aspect-square rounded flex items-center justify-center text-[10px] font-bold" title="Avg Diff: ${avgDiff}">${avgDiff}</div>`;
                     }
                 });
             });
-
             matrixHtml += `</div>`;
             container.innerHTML = matrixHtml;
         }
@@ -376,7 +394,7 @@
         }
 
         function renderCommittee() {
-            renderScatterPlot(allData);
+            renderRankGapChart(allData);
             renderCompatibilityMatrix(allData);
 
             const ranked = allData.filter(b => b.rank !== 999);
