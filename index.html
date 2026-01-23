@@ -37,7 +37,6 @@
         .crop-square { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         
         /* Hero Cards - Stacked on Mobile, Grid on Desktop */
-        /* UPDATED: Removed swipe logic, now simply stacks vertically on mobile */
         .hero-scroller { 
             display: grid; 
             grid-template-columns: 1fr; /* Default: Stacked (1 column) */
@@ -157,7 +156,7 @@
                 <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Rank</p><p id="m-rank" class="text-lg font-black text-blue-600">#1</p></div>
                 <div class="text-center"><p class="text-[8px] font-bold text-slate-400 uppercase">Pages</p><p id="m-pages" class="text-lg font-black text-slate-800">320</p></div>
             </div>
-            <div id="m-scores" class="grid grid-cols-4 gap-2"></div>
+            <div id="m-scores" class="grid grid-cols-5 gap-2"></div>
         </div>
     </div>
 
@@ -198,6 +197,7 @@
                         genre: (c[17]||"Other").replace(/"/g,""),
                         pages: pgs,
                         length: mins,
+                        grRating: (c[36]||"-").replace(/"/g,"").trim(), // Column AK (Index 36)
                         status: (c[41]||"").trim().toLowerCase(),
                         img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
                         selector: (c[16]||"").replace(/"/g,""),
@@ -439,7 +439,16 @@
             document.getElementById('m-author').innerText = b.author;
             document.getElementById('m-rank').innerText = b.rank === 999 ? 'NR' : '#'+b.rank;
             document.getElementById('m-pages').innerText = b.pages;
-            document.getElementById('m-scores').innerHTML = members.map((m,i) => `<div class="bg-slate-50 p-2 rounded text-center border"><div class="text-[7px] font-bold uppercase text-slate-400 mb-1">${m.n}</div><div class="text-sm font-bold text-slate-900">${b.scores[i]===999?'-':b.scores[i]}</div></div>`).join('');
+            
+            // Generate Member Scores
+            const memberHtml = members.map((m,i) => `<div class="bg-slate-50 p-2 rounded text-center border"><div class="text-[7px] font-bold uppercase text-slate-400 mb-1">${m.n}</div><div class="text-sm font-bold text-slate-900">${b.scores[i]===999?'-':b.scores[i]}</div></div>`).join('');
+            
+            // Generate Goodreads Score
+            const grHtml = `<div class="bg-slate-50 p-2 rounded text-center border"><div class="text-[7px] font-bold uppercase text-slate-400 mb-1">Goodreads</div><div class="text-sm font-bold text-slate-900">${b.grRating}</div></div>`;
+            
+            // Combine them
+            document.getElementById('m-scores').innerHTML = memberHtml + grHtml;
+            
             document.getElementById('modal').classList.add('active');
         }
         function closeModal() { document.getElementById('modal').classList.remove('active'); }
