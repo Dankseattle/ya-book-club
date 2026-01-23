@@ -61,6 +61,9 @@
         .badge-gold { background: #fbbf24; color: black; } 
         .badge-blue { background: #2563eb; color: white; }
 
+        /* Chart Tooltip */
+        #chart-tooltip { position: fixed; pointer-events: none; background: rgba(15, 23, 42, 0.95); color: white; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; z-index: 9999; display: none; transform: translate(-50%, -120%); white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); }
+
         /* Utilities */
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
         .hidden-section { display: none !important; }
@@ -174,6 +177,7 @@
                         </div>
                         <div class="flex gap-2 text-[8px] font-bold uppercase text-slate-400">
                             <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Match</span>
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span> Neutral</span>
                             <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rival</span>
                         </div>
                     </div>
@@ -302,11 +306,6 @@
                 const gap = Math.abs(b.rank - b.grRank);
                 const pClub = (b.rank / maxRank) * 100;
                 const pGR = (b.grRank / maxRank) * 100;
-                
-                // Track Color
-                const trackColor = pClub < pGR ? 'bg-gradient-to-r from-blue-600 to-slate-300' : 'bg-gradient-to-r from-slate-300 to-blue-600';
-                
-                // Determine left/width for the connecting line
                 const left = Math.min(pClub, pGR) + '%';
                 const width = Math.abs(pClub - pGR) + '%';
 
@@ -318,9 +317,7 @@
                     </div>
                     <div class="flex-grow relative h-4 bg-slate-50 rounded-full border border-slate-100">
                         <div class="absolute top-1/2 -translate-y-1/2 h-0.5 bg-slate-300 opacity-50" style="left:${left}; width:${width}"></div>
-                        
                         <div class="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full shadow-sm z-10 hover:scale-125 transition" style="left: ${pClub}%; margin-left:-4px;" title="Us: #${b.rank}"></div>
-                        
                         <div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-slate-300 rounded-full z-0" style="left: ${pGR}%; margin-left:-3px;" title="GR: #${b.grRank}"></div>
                     </div>
                 </div>`;
@@ -351,9 +348,10 @@
                         });
                         const avgDiff = count > 0 ? Math.round(totalDiff / count) : 0;
                         
+                        // Relaxed Thresholds for better color spread
                         let bgClass;
-                        if (avgDiff < 10) bgClass = 'bg-emerald-500 text-white';       // Great Match
-                        else if (avgDiff < 18) bgClass = 'bg-amber-300 text-amber-900'; // Moderate
+                        if (avgDiff < 22) bgClass = 'bg-emerald-500 text-white';       // Relaxed from 10 to 22
+                        else if (avgDiff < 35) bgClass = 'bg-amber-300 text-amber-900'; // Relaxed from 18 to 35
                         else bgClass = 'bg-rose-500 text-white';                       // Rivals
                         
                         matrixHtml += `<div class="${bgClass} aspect-square rounded flex items-center justify-center text-[10px] font-bold shadow-sm" title="Avg Diff: ${avgDiff}">${avgDiff}</div>`;
