@@ -61,15 +61,12 @@
         .badge-gold { background: #fbbf24; color: black; } 
         .badge-blue { background: #2563eb; color: white; }
 
-        /* Chart Tooltip */
-        #chart-tooltip { position: fixed; pointer-events: none; background: rgba(15, 23, 42, 0.95); color: white; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; z-index: 9999; display: none; transform: translate(-50%, -120%); white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); }
-
         /* Utilities */
         .btn-active { background-color: #0f172a !important; color: white !important; border-color: #0f172a !important; }
         .hidden-section { display: none !important; }
         
         /* Custom Scrollbar for Charts */
-        .custom-scroll::-webkit-scrollbar { height: 6px; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; } /* Vertical Width */
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -148,31 +145,36 @@
         <div id="section-committee" class="hidden-section">
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 relative flex flex-col">
+                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 relative flex flex-col h-[500px]">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h3 class="text-xl font-bold uppercase italic text-slate-900 font-header">The Rank Gap</h3>
-                            <p class="text-[10px] font-medium text-slate-400 mt-1">Difference between Our Rank (Blue) and Goodreads (Grey)</p>
+                            <p class="text-[10px] font-medium text-slate-400 mt-1">Comparing Our Rank vs. Goodreads</p>
                         </div>
-                        <div class="flex gap-3 text-[9px] font-bold uppercase text-slate-400">
-                            <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Us</div>
-                            <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300"></span> Them</div>
+                        <div class="flex flex-col items-end gap-2">
+                            <div class="flex gap-3 text-[9px] font-bold uppercase text-slate-400">
+                                <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Us</div>
+                                <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300"></span> GR</div>
+                            </div>
+                            <select id="gapSortSelect" onchange="renderRankGapChart(allData)" class="text-[9px] font-bold uppercase bg-slate-100 text-slate-500 rounded px-2 py-1 outline-none">
+                                <option value="rank">Sort: Rank</option>
+                                <option value="gap">Sort: Gap Size</option>
+                            </select>
                         </div>
                     </div>
-                    <div id="gap-chart-container" class="w-full flex-grow relative overflow-x-auto custom-scroll min-h-[250px]">
-                        <div id="chart-tooltip"></div>
+                    <div id="gap-chart-container" class="w-full flex-grow relative overflow-y-auto custom-scroll pr-2">
                         </div>
                 </div>
 
-                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 relative flex flex-col">
+                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 relative flex flex-col h-[500px]">
                     <div class="mb-4 flex justify-between items-end">
                         <div>
                             <h3 class="text-xl font-bold uppercase italic text-slate-900 font-header">Compatibility</h3>
                             <p class="text-[10px] font-medium text-slate-400 mt-1">Avg. rank difference between members</p>
                         </div>
                         <div class="flex gap-2 text-[8px] font-bold uppercase text-slate-400">
-                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aligned</span>
-                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rivals</span>
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Match</span>
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rival</span>
                         </div>
                     </div>
                     <div id="heatmap-container" class="w-full flex-grow flex items-center justify-center">
@@ -264,70 +266,68 @@
 
         function renderRankGapChart(books) {
             const container = document.getElementById('gap-chart-container');
+            const sortType = document.getElementById('gapSortSelect').value;
             
-            // 1. Filter and Sort by Club Rank
-            const plotData = books.filter(b => b.rank !== 999 && b.grRank !== null).sort((a,b) => a.rank - b.rank);
-            if (plotData.length === 0) { container.innerHTML = '<p class="text-center text-slate-400 py-10">Not enough data for chart</p>'; return; }
+            // 1. Filter
+            let plotData = books.filter(b => b.rank !== 999 && b.grRank !== null);
+            if (plotData.length === 0) { container.innerHTML = '<p class="text-center text-slate-400 py-10">Not enough data</p>'; return; }
 
-            // 2. Setup Dimensions
-            const maxRank = Math.max(Math.max(...plotData.map(b => b.rank)), Math.max(...plotData.map(b => b.grRank)));
-            const itemWidth = 30; // Width per book
-            const h = 250; // SVG Height
-            const padTop = 20;
-            const padBot = 20;
-            const w = Math.max(container.offsetWidth, plotData.length * itemWidth); // Scrollable Width
-
-            // 3. Draw SVG
-            let svgHtml = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="min-width: ${w}px;">`;
-            
-            // Grid lines (every 20 ranks)
-            for(let i=0; i<=maxRank; i+=20) {
-                if(i===0) continue;
-                const y = padTop + ((i / maxRank) * (h - padTop - padBot));
-                svgHtml += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="#f1f5f9" stroke-width="1" />`;
-                svgHtml += `<text x="5" y="${y+3}" font-size="8" fill="#cbd5e1" font-family="sans-serif">#${i}</text>`;
+            // 2. Sort Logic
+            if(sortType === 'gap') {
+                // Sort by biggest disagreement
+                plotData.sort((a,b) => Math.abs(b.rank - b.grRank) - Math.abs(a.rank - a.grRank));
+            } else {
+                // Default: Sort by Club Rank
+                plotData.sort((a,b) => a.rank - b.rank);
             }
 
-            // Draw Dumbbells
-            plotData.forEach((b, i) => {
-                const x = (itemWidth/2) + (i * itemWidth);
-                const yClub = padTop + ((b.rank / maxRank) * (h - padTop - padBot));
-                const yGR = padTop + ((b.grRank / maxRank) * (h - padTop - padBot));
+            const maxRank = Math.max(Math.max(...plotData.map(b => b.rank)), Math.max(...plotData.map(b => b.grRank)));
+
+            // 3. Build HTML List
+            let html = `<div class="flex flex-col gap-3">`;
+            
+            // Header for X-Axis scale
+            html += `
+                <div class="flex text-[8px] font-bold text-slate-300 uppercase px-2 mb-1 border-b border-slate-100 pb-2 sticky top-0 bg-white z-10">
+                    <div class="w-24 flex-shrink-0">Title</div>
+                    <div class="flex-grow relative h-3">
+                        <span class="absolute left-0">#1</span>
+                        <span class="absolute left-1/2 -translate-x-1/2">#${Math.round(maxRank/2)}</span>
+                        <span class="absolute right-0">#${maxRank}</span>
+                    </div>
+                </div>
+            `;
+
+            plotData.forEach(b => {
                 const gap = Math.abs(b.rank - b.grRank);
+                const pClub = (b.rank / maxRank) * 100;
+                const pGR = (b.grRank / maxRank) * 100;
                 
-                // Connector Line
-                svgHtml += `<line x1="${x}" y1="${yClub}" x2="${x}" y2="${yGR}" stroke="#cbd5e1" stroke-width="1.5" />`;
+                // Track Color
+                const trackColor = pClub < pGR ? 'bg-gradient-to-r from-blue-600 to-slate-300' : 'bg-gradient-to-r from-slate-300 to-blue-600';
                 
-                // Dots (Grouped for easier tooltip target)
-                svgHtml += `<g class="cursor-pointer group hover:opacity-100 opacity-80" data-title="${b.title}" data-gap="${gap}" data-us="${b.rank}" data-gr="${b.grRank}">
-                    <rect x="${x-10}" y="0" width="20" height="${h}" fill="transparent" />
-                    <circle cx="${x}" cy="${yGR}" r="3" fill="#cbd5e1" />
-                    <circle cx="${x}" cy="${yClub}" r="3" fill="#2563eb" />
-                </g>`;
+                // Determine left/width for the connecting line
+                const left = Math.min(pClub, pGR) + '%';
+                const width = Math.abs(pClub - pGR) + '%';
+
+                html += `
+                <div class="flex items-center gap-2 group cursor-pointer hover:bg-slate-50 p-1 rounded transition" onclick="openModal(${b.id})">
+                    <div class="w-24 flex-shrink-0">
+                        <p class="text-[10px] font-bold text-slate-900 truncate leading-tight">${b.title}</p>
+                        <p class="text-[8px] font-medium text-slate-400">Gap: ${gap}</p>
+                    </div>
+                    <div class="flex-grow relative h-4 bg-slate-50 rounded-full border border-slate-100">
+                        <div class="absolute top-1/2 -translate-y-1/2 h-0.5 bg-slate-300 opacity-50" style="left:${left}; width:${width}"></div>
+                        
+                        <div class="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full shadow-sm z-10 hover:scale-125 transition" style="left: ${pClub}%; margin-left:-4px;" title="Us: #${b.rank}"></div>
+                        
+                        <div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-slate-300 rounded-full z-0" style="left: ${pGR}%; margin-left:-3px;" title="GR: #${b.grRank}"></div>
+                    </div>
+                </div>`;
             });
 
-            svgHtml += `</svg>`;
-            
-            // Re-inject Tooltip Div
-            container.innerHTML = `<div id="chart-tooltip"></div>` + svgHtml;
-            
-            // 4. Interaction Logic
-            const tooltip = document.getElementById('chart-tooltip');
-            container.querySelectorAll('g').forEach(g => {
-                g.addEventListener('mousemove', (e) => {
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = e.clientX + 'px';
-                    tooltip.style.top = (e.clientY - 40) + 'px';
-                    
-                    const t = g.getAttribute('data-title');
-                    const us = g.getAttribute('data-us');
-                    const gr = g.getAttribute('data-gr');
-                    const gap = g.getAttribute('data-gap');
-                    
-                    tooltip.innerHTML = `<span class="text-blue-200">Us: #${us}</span> <span class="text-slate-400">|</span> <span class="text-slate-300">GR: #${gr}</span><br><div class="text-white mt-1 border-t border-slate-700 pt-1">${t}</div><div class="text-[9px] text-slate-400 mt-0.5">Gap: ${gap} spots</div>`;
-                });
-                g.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-            });
+            html += `</div>`;
+            container.innerHTML = html;
         }
 
         function renderCompatibilityMatrix(books) {
@@ -351,7 +351,6 @@
                         });
                         const avgDiff = count > 0 ? Math.round(totalDiff / count) : 0;
                         
-                        // Updated Color Logic: Green = High Compat, Red = Low Compat
                         let bgClass;
                         if (avgDiff < 10) bgClass = 'bg-emerald-500 text-white';       // Great Match
                         else if (avgDiff < 18) bgClass = 'bg-amber-300 text-amber-900'; // Moderate
@@ -403,46 +402,6 @@
                 return `<div class="book-card" onclick="openModal(${b.id})"><div class="aspect-square bg-slate-100 overflow-hidden relative"><img src="${b.img}" class="crop-square" onerror="this.src='https://placehold.jp/30/e2e8f0/94a3b8/400x400.png?text=Cover'"><div class="genre-pill">${b.genre}</div>${badgeHTML}</div><div class="p-4 flex flex-col flex-grow"><div class="mb-3"><h3 class="font-bold text-[11px] uppercase leading-tight line-clamp-2">${b.title}</h3><p class="text-[9px] font-bold text-blue-600 uppercase mt-1 truncate">${b.author}</p></div><div class="flex justify-between items-end border-t pt-2 mt-auto"><div class="text-left"><p class="text-[7px] font-bold text-slate-500 uppercase tracking-wider">${displayLabel}</p><p class="text-[10px] font-bold text-slate-900 leading-none">${displayRank}</p></div><div class="text-right"><p class="text-[7px] font-bold text-slate-500 uppercase leading-none tracking-wider">Order</p><p class="text-[10px] font-bold italic">${b.id}</p></div></div></div></div>`;
             }).join('');
             updateButtons();
-        }
-
-        function renderCommittee() {
-            renderRankGapChart(allData);
-            renderCompatibilityMatrix(allData);
-
-            const ranked = allData.filter(b => b.rank !== 999);
-            const gCount = ranked.reduce((a,b)=>{ a[b.genre]=(a[b.genre]||0)+1; return a; }, {});
-            const topG = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
-            document.getElementById('insight-1').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Dominant Genre</p><p class="text-3xl font-bold text-slate-900 mt-2 mb-1 font-header">${topG[0]}</p><p class="text-xs text-slate-500 font-medium">${Math.round((topG[1]/ranked.length)*100)}% of library</p></div>`;
-
-            let maxSpread = 0, divisiveBook = { title: '-', spread: 0 };
-            ranked.forEach(b => {
-                const validScores = b.scores.filter(s => s !== 999);
-                if (validScores.length > 1) {
-                    const spread = Math.max(...validScores) - Math.min(...validScores);
-                    if (spread > maxSpread) { maxSpread = spread; divisiveBook = { title: b.title, spread: spread, img: b.img, id: b.id }; }
-                }
-            });
-            document.getElementById('insight-2').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full relative overflow-hidden group cursor-pointer flex flex-col justify-center" onclick="openModal(${divisiveBook.id})"><div class="relative z-10"><p class="text-[9px] font-bold uppercase text-red-500 tracking-widest mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> The Battleground</p><p class="text-xl font-bold text-slate-900 leading-tight line-clamp-2 mt-2 font-header">${divisiveBook.title}</p><p class="text-xs text-slate-500 font-medium mt-1">${divisiveBook.spread} spot disagreement</p></div><img src="${divisiveBook.img}" class="absolute right-[-20px] bottom-[-20px] w-28 h-28 object-cover rounded-full opacity-10 group-hover:opacity-30 group-hover:scale-110 transition duration-300 pointer-events-none"></div>`;
-
-            let bestSelector = {name:'-', score: 1000};
-            members.forEach(m => {
-                const picks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
-                if(picks.length > 0) {
-                    const avg = picks.reduce((a,b)=>a+b.rank,0) / picks.length;
-                    if(avg < bestSelector.score) bestSelector = {name: m.n, score: avg};
-                }
-            });
-            document.getElementById('insight-3').innerHTML = `<div class="bg-white p-6 rounded-2xl border shadow-sm h-full flex flex-col justify-center"><p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Best Selector</p><p class="text-3xl font-bold text-slate-900 mt-2 mb-1 font-header">${bestSelector.name}</p><p class="text-xs text-slate-500 font-medium">Avg Pick Rank: #${Math.round(bestSelector.score)}</p></div>`;
-
-            document.getElementById('member-grid').innerHTML = members.map((m, i) => {
-                const myPicks = allData.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()) && b.rank !== 999);
-                const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
-                const goldenPick = myPicks.sort((a,b)=>a.rank - b.rank)[0];
-                const faves = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>a.scores[i]-b.scores[i]).slice(0,5);
-                const hates = allData.filter(b=>b.scores[i]!==999).sort((a,b)=>b.scores[i]-a.scores[i]).slice(0,5);
-
-                return `<div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col"><div class="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center"><div><h3 class="text-2xl font-bold uppercase italic text-slate-900 font-header">${m.n}</h3><div class="flex gap-3 mt-1"><span class="text-[9px] font-bold bg-white border px-2 py-1 rounded text-slate-500 tracking-wider">Picked ${myPicks.length} Books</span><span class="text-[9px] font-bold bg-blue-50 border border-blue-100 px-2 py-1 rounded text-blue-600 tracking-wider">Avg. Pick Rank #${avgPickRank}</span></div></div>${goldenPick ? `<div class="text-right cursor-pointer" onclick="openModal(${goldenPick.id})"><p class="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-1">Best Contribution</p><div class="flex items-center gap-3 justify-end group"><div class="text-right"><p class="text-[10px] font-bold leading-tight text-slate-900 group-hover:text-blue-600 transition truncate w-24">${goldenPick.title}</p><p class="text-[10px] font-medium text-slate-400 group-hover:text-blue-500">Ranked #${goldenPick.rank}</p></div><img src="${goldenPick.img}" class="w-10 h-10 rounded object-cover shadow-sm border group-hover:scale-110 transition flex-shrink-0"></div></div>` : ''}</div><div class="p-6"><p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Hall of Fame (Top 5)</p><div class="grid grid-cols-5 gap-3 mb-8">${faves.map(b => `<div class="cursor-pointer group relative" onclick="openModal(${b.id})"><img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm group-hover:scale-105 transition"><div class="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div></div>`).join('')}</div><p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2"><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> Hall of Shame (Bottom 5)</p><div class="grid grid-cols-5 gap-3">${hates.map(b => `<div class="cursor-pointer group relative" onclick="openModal(${b.id})"><img src="${b.img}" class="rounded-lg object-cover w-full aspect-square border shadow-sm grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition"><div class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-sm border-2 border-white">${b.scores[i]}</div></div>`).join('')}</div></div></div>`;
-            }).join('');
         }
 
         function switchTab(tab) {
