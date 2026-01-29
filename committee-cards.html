@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Committee Profiles - Ya Dood Book Club</title>
+    <link rel="icon" type="image/png" href="clublogo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        h1, h2, h3, .font-header { font-family: 'Space Grotesk', sans-serif; }
+        
+        .member-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; overflow: hidden; transition: all 0.3s ease; }
+        .member-card.expanded { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border-color: #cbd5e1; }
+        
+        .avatar-circle { width: 4rem; height: 4rem; border-radius: 9999px; object-fit: cover; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .avatar-placeholder { width: 4rem; height: 4rem; border-radius: 9999px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #64748b; font-size: 1.25rem; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+        /* Smooth Expand Animation */
+        .details-panel { max-height: 0; overflow: hidden; transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; opacity: 0; }
+        .member-card.expanded .details-panel { max-height: 2000px; opacity: 1; }
+        
+        /* Chevron Rotation */
+        .chevron { transition: transform 0.3s ease; }
+        .member-card.expanded .chevron { transform: rotate(180deg); }
+
+        /* Stats & Tags */
+        .stat-label { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+        .stat-val { font-size: 1.25rem; font-weight: 900; color: #0f172a; font-family: 'Space Grotesk', sans-serif; line-height: 1; }
+        
+        .tag-base { font-weight: 800; font-size: 0.65rem; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; display: inline-block; }
+        .tag-blue { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+        .tag-slate { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+        .tag-green { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+        .tag-red { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+    </style>
+</head>
+<body>
+
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="clublogo.png" class="h-8 w-auto" onerror="this.style.display='none'">
+                <h1 class="text-lg font-black uppercase tracking-tight font-header">The Committee</h1>
+            </div>
+            <a href="index.html" class="text-[10px] font-bold uppercase text-slate-400 hover:text-slate-900 transition bg-slate-100 px-3 py-1.5 rounded-full">Back to Library</a>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-6 py-8">
+        <div id="loading" class="text-center py-20">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
+            <p class="text-xs font-bold uppercase text-slate-400 tracking-widest">Analysing Member Data...</p>
+        </div>
+        
+        <div id="content" class="hidden space-y-6">
+            </div>
+    </main>
+
+    <div id="modal" class="fixed inset-0 bg-slate-900/80 hidden z-[100] items-center justify-center backdrop-blur-sm p-6" onclick="this.classList.add('hidden')">
+        <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
+            <h2 id="m-title" class="text-xl font-black uppercase font-header mb-1 leading-tight"></h2>
+            <p id="m-rank" class="text-blue-600 font-bold text-xs uppercase tracking-widest mb-6"></p>
+            <div class="w-16 h-1 bg-slate-100 mx-auto rounded-full"></div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_ID = '13bOmsDf8HibgVqyfcKWoH7SZPxk3k3ZIIOf--mduqbU';
+        const members = [{id:'kirk', n:'Kirk'},{id:'huber', n:'Huber'},{id:'lattanzio', n:'Lattanzio'},{id:'walco', n:'Walco'}];
+        let allData = [];
+
+        async function load() {
+            try {
+                const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`);
+                const txt = await res.text();
+                
+                allData = txt.split('\n').slice(1).map((r, i) => {
+                    const c = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const rRaw = (c[11]||"").replace(/"/g,"").trim();
+                    const hasRank = rRaw && rRaw !== 'N/A';
+                    
+                    return {
+                        id: parseInt(c[0])||(i+1),
+                        title: (c[1]||"").replace(/"/g,""),
+                        author: (c[2]||"").replace(/"/g,""),
+                        rank: hasRank ? parseInt(rRaw) : 999,
+                        genre: (c[17]||"Other").replace(/"/g,"").trim(),
+                        selector: (c[16]||"").replace(/"/g,""),
+                        scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999]
+                    };
+                }).filter(b => b.title && b.title !== "Book");
+
+                renderCards();
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+
+            } catch (e) { console.error(e); document.getElementById('loading').innerHTML = "Error loading data."; }
+        }
+
+        function toggleCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            const wasExpanded = card.classList.contains('expanded');
+            
+            // Close all others (optional - keeps UI clean)
+            document.querySelectorAll('.member-card').forEach(c => c.classList.remove('expanded'));
+            
+            if (!wasExpanded) {
+                card.classList.add('expanded');
+            }
+        }
+
+        function renderCards() {
+            const container = document.getElementById('content');
+            const ranked = allData.filter(b => b.rank !== 999);
+
+            container.innerHTML = members.map((m, mIdx) => {
+                // --- CALCS ---
+                const myPicks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
+                myPicks.sort((a,b) => a.rank - b.rank);
+                const bestPick = myPicks[0];
+                const worstPick = myPicks[myPicks.length - 1];
+                const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
+
+                let totalDev = 0, devCount = 0;
+                ranked.forEach(b => {
+                    if(b.scores[mIdx] !== 999) { totalDev += Math.abs(b.scores[mIdx] - b.rank); devCount++; }
+                });
+                const contrarianScore = devCount ? Math.round(totalDev / devCount) : 0;
+                
+                // Alignment Labels
+                let alignLabel = "The Anchor";
+                let alignDesc = "rarely deviates from the group consensus";
+                if (contrarianScore > 25) { alignLabel = "The Wildcard"; alignDesc = "often disagrees with popular opinion"; }
+                else if (contrarianScore > 15) { alignLabel = "The Independent"; alignDesc = "has distinct, specific tastes"; }
+
+                // Taste Profile
+                let ficSum = 0, ficCount = 0, nonSum = 0, nonCount = 0;
+                ranked.forEach(b => {
+                    if(b.scores[mIdx] === 999) return;
+                    if(b.genre === 'Fiction') { ficSum += b.scores[mIdx]; ficCount++; }
+                    else if(b.genre === 'Non-Fiction') { nonSum += b.scores[mIdx]; nonCount++; }
+                });
+                const avgFic = ficCount ? Math.round(ficSum / ficCount) : '-';
+                const avgNon = nonCount ? Math.round(nonSum / nonCount) : '-';
+                
+                let prefLabel = "Balanced";
+                let prefDesc = "enjoys all genres equally";
+                if (avgFic !== '-' && avgNon !== '-') {
+                    if (avgFic < avgNon - 5) { prefLabel = "Fiction Lean"; prefDesc = "prefers narrative fiction"; }
+                    else if (avgNon < avgFic - 5) { prefLabel = "Non-Fic Lean"; prefDesc = "prefers real-world stories"; }
+                }
+
+                // Dynamic Blurb
+                const blurb = `A <strong>${prefDesc}</strong> who <strong>${alignDesc}</strong>.`;
+
+                // Hot Takes
+                let biggestLove = { diff: -999, book: null };
+                let biggestHate = { diff: 999, book: null };
+                ranked.forEach(b => {
+                    const myScore = b.scores[mIdx];
+                    if (myScore !== 999) {
+                        const diff = b.rank - myScore; 
+                        if (diff > biggestLove.diff) biggestLove = { diff, book: b };
+                        if (diff < biggestHate.diff) biggestHate = { diff, book: b };
+                    }
+                });
+
+                // Lists
+                const faves = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => a.scores[mIdx] - b.scores[mIdx]).slice(0, 5);
+                const least = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => b.scores[mIdx] - a.scores[mIdx]).slice(0, 5);
+
+                // --- HTML ---
+                return `
+                <div id="card-${m.id}" class="member-card cursor-pointer group" onclick="toggleCard('${m.id}')">
+                    
+                    <div class="p-6 flex items-center gap-5">
+                        <div class="flex-shrink-0">
+                            <img src="members/${m.id}.jpg" class="avatar-circle hidden" onload="this.classList.remove('hidden')" onerror="this.style.display='none'">
+                            <div class="avatar-placeholder" id="ph-${m.id}">${m.n.substring(0,1)}</div>
+                            <script>document.querySelector('img[src="members/${m.id}.jpg"]').onerror = function(){ document.getElementById('ph-${m.id}').style.display='flex'; }<\/script>
+                        </div>
+                        
+                        <div class="flex-grow min-w-0">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-black uppercase italic font-header leading-none mb-1 text-slate-900">${m.n}</h2>
+                                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">${alignLabel}</p>
+                                </div>
+                                <svg class="chevron w-5 h-5 text-slate-300 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                            <p class="text-xs text-slate-500 leading-relaxed pr-4 line-clamp-2 md:line-clamp-none">${blurb}</p>
+                        </div>
+                    </div>
+
+                    <div class="details-panel bg-slate-50 border-t border-slate-100">
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            <div class="space-y-6">
+                                <div>
+                                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Selector Stats</h3>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-center">
+                                            <div class="stat-label">Avg Pick Rank</div>
+                                            <div class="stat-val">#${avgPickRank}</div>
+                                        </div>
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-center">
+                                            <div class="stat-label">Contrarian Score</div>
+                                            <div class="stat-val">${contrarianScore}</div>
+                                        </div>
+                                    </div>
