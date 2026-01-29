@@ -212,3 +212,92 @@
                                             <div class="stat-val">${contrarianScore}</div>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div>
+                                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Legacy Picks</h3>
+                                    <div class="space-y-2">
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center" onclick="showBook('${bestPick?.title}', ${bestPick?.rank}); event.stopPropagation();">
+                                            <div><span class="tag-base tag-green mb-1">Crown Jewel</span><div class="font-bold text-xs text-slate-900 line-clamp-1">${bestPick?.title || '-'}</div></div>
+                                            <div class="text-right text-[10px] font-bold text-slate-400">#${bestPick?.rank || '-'}</div>
+                                        </div>
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center" onclick="showBook('${worstPick?.title}', ${worstPick?.rank}); event.stopPropagation();">
+                                            <div><span class="tag-base tag-red mb-1">The Dud</span><div class="font-bold text-xs text-slate-900 line-clamp-1">${worstPick?.title || '-'}</div></div>
+                                            <div class="text-right text-[10px] font-bold text-slate-400">#${worstPick?.rank || '-'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Taste Profile</h3>
+                                    <div class="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex justify-between items-center">
+                                        <div class="text-center w-1/2 border-r border-slate-100">
+                                            <span class="tag-base tag-blue mb-1 block w-fit mx-auto">Fiction</span>
+                                            <div class="text-[9px] text-slate-400 font-bold uppercase mt-1">Avg Rank</div>
+                                            <div class="font-bold text-slate-900 text-lg">#${avgFic}</div>
+                                        </div>
+                                        <div class="text-center w-1/2">
+                                            <span class="tag-base tag-slate mb-1 block w-fit mx-auto">Non-Fic</span>
+                                            <div class="text-[9px] text-slate-400 font-bold uppercase mt-1">Avg Rank</div>
+                                            <div class="font-bold text-slate-900 text-lg">#${avgNon}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-6">
+                                <div>
+                                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Hot Takes</h3>
+                                    <div class="space-y-2">
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center" onclick="showBook('${biggestLove.book?.title}', ${biggestLove.book?.rank}); event.stopPropagation();">
+                                            <div><span class="tag-base tag-blue mb-1">Underrated</span><div class="font-bold text-xs text-slate-900 line-clamp-1">${biggestLove.book?.title || '-'}</div></div>
+                                            <div class="text-right">
+                                                <div class="text-xs font-bold text-slate-900">#${biggestLove.book ? biggestLove.book.scores[mIdx] : '-'}</div>
+                                                <div class="text-[8px] text-slate-400">vs #${biggestLove.book?.rank}</div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center" onclick="showBook('${biggestHate.book?.title}', ${biggestHate.book?.rank}); event.stopPropagation();">
+                                            <div><span class="tag-base tag-red mb-1">Overrated</span><div class="font-bold text-xs text-slate-900 line-clamp-1">${biggestHate.book?.title || '-'}</div></div>
+                                            <div class="text-right">
+                                                <div class="text-xs font-bold text-slate-900">#${biggestHate.book ? biggestHate.book.scores[mIdx] : '-'}</div>
+                                                <div class="text-[8px] text-slate-400">vs #${biggestHate.book?.rank}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <h3 class="text-[10px] font-black uppercase text-green-600 tracking-widest mb-2 border-b border-green-100 pb-1">Top 5</h3>
+                                        <div class="space-y-1.5">
+                                            ${faves.map((b, i) => `<div class="flex items-center gap-2"><span class="text-[9px] font-bold text-green-500 w-3">${i+1}</span><p class="text-[10px] font-bold text-slate-900 truncate">${b.title}</p></div>`).join('')}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-[10px] font-black uppercase text-red-600 tracking-widest mb-2 border-b border-red-100 pb-1">Bottom 5</h3>
+                                        <div class="space-y-1.5">
+                                            ${least.map((b, i) => `<div class="flex items-center gap-2"><span class="text-[9px] font-bold text-red-500 w-3">${i+1}</span><p class="text-[10px] font-bold text-slate-900 truncate">${b.title}</p></div>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function showBook(title, rank) {
+            if(!title || !rank) return;
+            document.getElementById('m-title').innerText = title;
+            document.getElementById('m-rank').innerText = 'Consensus Rank #' + rank;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        load();
+    </script>
+</body>
+</html>
