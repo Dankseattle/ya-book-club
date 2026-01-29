@@ -20,13 +20,12 @@
         .stat-label { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; }
         .stat-val { font-size: 1rem; font-weight: 900; color: #0f172a; font-family: 'Space Grotesk', sans-serif; }
 
-        /* Badges & Pills */
+        /* Badges */
         .tag-base { font-weight: 800; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         .tag-blue { background: #dbeafe; color: #1e40af; }
         .tag-slate { background: #f1f5f9; color: #475569; }
-        
-        .maverick-bar { height: 4px; border-radius: 2px; background: #e2e8f0; overflow: hidden; margin-top: 4px; }
-        .maverick-fill { height: 100%; background: #2563eb; }
+        .tag-purple { background: #f3e8ff; color: #6b21a8; }
+        .tag-amber { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body>
@@ -41,11 +40,10 @@
     <main class="max-w-5xl mx-auto px-6 py-8">
         <div id="loading" class="text-center py-20">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p class="text-xs font-bold uppercase text-slate-400">Analyzing reading habits...</p>
+            <p class="text-xs font-bold uppercase text-slate-400">Crunching the numbers...</p>
         </div>
         
-        <div id="content" class="hidden">
-            </div>
+        <div id="content" class="hidden"></div>
     </main>
 
     <div id="modal" class="fixed inset-0 bg-slate-900/80 hidden z-[100] items-center justify-center backdrop-blur-sm" onclick="this.classList.add('hidden')">
@@ -70,6 +68,10 @@
                     const rRaw = (c[11]||"").replace(/"/g,"").trim();
                     const hasRank = rRaw && rRaw !== 'N/A';
                     
+                    let grRankRaw = (c[37]||"").replace(/"/g,"").trim();
+                    let grRank = (grRankRaw && !isNaN(parseInt(grRankRaw))) ? parseInt(grRankRaw) : null;
+                    const pgs = parseInt((c[39]||"0").replace(/\D/g,"")) || 0;
+
                     return {
                         id: parseInt(c[0])||(i+1),
                         title: (c[1]||"").replace(/"/g,""),
@@ -77,6 +79,8 @@
                         rank: hasRank ? parseInt(rRaw) : 999,
                         genre: (c[17]||"Other").replace(/"/g,"").trim(),
                         selector: (c[16]||"").replace(/"/g,""),
+                        pages: pgs,
+                        grRank: grRank,
                         scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999]
                     };
                 }).filter(b => b.title && b.title !== "Book");
@@ -88,50 +92,92 @@
             } catch (e) { console.error(e); document.getElementById('loading').innerHTML = "Error loading data."; }
         }
 
+        // Helper: Calculate Linear Correlation
+        function getCorrelation(x, y) {
+            const n = x.length;
+            if (n === 0) return 0;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+            const sumX2 = x.reduce((a, b) => a + b * b, 0);
+            const sumY2 = y.reduce((a, b) => a + b * b, 0);
+            const numerator = (n * sumXY) - (sumX * sumY);
+            const denominator = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
+            return denominator === 0 ? 0 : numerator / denominator;
+        }
+
         function renderDeepDive() {
             const container = document.getElementById('content');
             const ranked = allData.filter(b => b.rank !== 999);
 
             container.innerHTML = members.map((m, mIdx) => {
-                // 1. Selector Stats
+                
+                // --- 1. CORE STATS ---
                 const myPicks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
                 myPicks.sort((a,b) => a.rank - b.rank);
                 const bestPick = myPicks[0];
                 const worstPick = myPicks[myPicks.length - 1];
                 const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
 
-                // 2. Contrarian Score (Formerly Consensus Gap)
                 let totalDev = 0, devCount = 0;
+                ranked.forEach(b => { if(b.scores[mIdx] !== 999) { totalDev += Math.abs(b.scores[mIdx] - b.rank); devCount++; } });
+                const contrarianScore = devCount ? Math.round(totalDev / devCount) : 0;
+
+                // --- 2. THE PUBLIC EYE (GR Correlation) ---
+                // Positive Corr = Agrees with Public (Normie). Negative/Low = Disagrees (Hipster).
+                let grScores = [], myGrScores = [];
                 ranked.forEach(b => {
-                    if(b.scores[mIdx] !== 999) {
-                        totalDev += Math.abs(b.scores[mIdx] - b.rank);
-                        devCount++;
+                    if (b.scores[mIdx] !== 999 && b.grRank !== null) {
+                        myGrScores.push(b.scores[mIdx]);
+                        grScores.push(b.grRank);
                     }
                 });
-                const contrarianScore = devCount ? Math.round(totalDev / devCount) : 0;
-                
-                // Alignment Label
-                let alignLabel = "The Anchor"; 
-                let alignColor = "bg-blue-600";
-                if (contrarianScore > 25) { alignLabel = "The Wildcard"; alignColor = "bg-purple-600"; }
-                else if (contrarianScore > 15) { alignLabel = "Independent"; alignColor = "bg-indigo-500"; }
+                const grCorr = getCorrelation(myGrScores, grScores);
+                let popLabel = "Neutral";
+                if (grCorr > 0.4) popLabel = "The Normie"; // High agreement
+                else if (grCorr < 0.1) popLabel = "The Hipster"; // Low/Inverse agreement
+                else popLabel = "The Realist";
 
-                // 3. Taste Profile: Fiction vs Non-Fiction
-                let ficSum = 0, ficCount = 0;
-                let nonSum = 0, nonCount = 0;
-
+                // --- 3. ATTENTION SPAN (Page Count Correlation) ---
+                // Negative Corr = Lower Rank (Better) for Higher Pages -> Scholar
+                // Positive Corr = Higher Rank (Worse) for Higher Pages -> Sprinter
+                let pageScores = [], myPageScores = [];
                 ranked.forEach(b => {
-                    const score = b.scores[mIdx];
-                    if(score === 999) return;
-                    
-                    if(b.genre === 'Fiction') { ficSum += score; ficCount++; }
-                    else if(b.genre === 'Non-Fiction') { nonSum += score; nonCount++; }
+                    if (b.scores[mIdx] !== 999 && b.pages > 0) {
+                        myPageScores.push(b.scores[mIdx]);
+                        pageScores.push(b.pages);
+                    }
                 });
+                const pageCorr = getCorrelation(myPageScores, pageScores);
+                let spanLabel = "Balanced";
+                if (pageCorr < -0.15) spanLabel = "The Scholar"; // Likes Long
+                else if (pageCorr > 0.15) spanLabel = "The Sprinter"; // Likes Short
 
+                // --- 4. THE ALLIANCE (Affinity) ---
+                let affinity = [];
+                members.forEach((other, oIdx) => {
+                    if (mIdx !== oIdx) {
+                        // Find books picked by 'other', calculate 'm's avg score
+                        const otherPicks = ranked.filter(b => b.selector.toLowerCase().includes(other.n.toLowerCase()) && b.scores[mIdx] !== 999);
+                        if (otherPicks.length > 0) {
+                            const avgScore = otherPicks.reduce((a,b) => a + b.scores[mIdx], 0) / otherPicks.length;
+                            affinity.push({ name: other.n, score: avgScore });
+                        }
+                    }
+                });
+                affinity.sort((a,b) => a.score - b.score); // Lower score is better
+                const bestAlly = affinity.length ? affinity[0] : {name:'-', score:0};
+                const worstEnemy = affinity.length ? affinity[affinity.length-1] : {name:'-', score:0};
+
+                // --- 5. TASTE PROFILE ---
+                let ficSum = 0, ficCount = 0, nonSum = 0, nonCount = 0;
+                ranked.forEach(b => {
+                    if(b.scores[mIdx] === 999) return;
+                    if(b.genre === 'Fiction') { ficSum += b.scores[mIdx]; ficCount++; }
+                    else if(b.genre === 'Non-Fiction') { nonSum += b.scores[mIdx]; nonCount++; }
+                });
                 const avgFic = ficCount ? Math.round(ficSum / ficCount) : '-';
                 const avgNon = nonCount ? Math.round(nonSum / nonCount) : '-';
-                
-                // Determine Preference
                 let prefLabel = "Balanced";
                 let prefColor = "text-slate-400";
                 if (avgFic !== '-' && avgNon !== '-') {
@@ -139,19 +185,7 @@
                     else if (avgNon < avgFic - 5) { prefLabel = "Non-Fic Lean"; prefColor = "text-emerald-600"; }
                 }
 
-                // 4. Hot Takes
-                let biggestLove = { diff: -999, book: null };
-                let biggestHate = { diff: 999, book: null };
-                ranked.forEach(b => {
-                    const myScore = b.scores[mIdx];
-                    if (myScore !== 999) {
-                        const diff = b.rank - myScore; // Positive = I liked it more
-                        if (diff > biggestLove.diff) biggestLove = { diff, book: b };
-                        if (diff < biggestHate.diff) biggestHate = { diff, book: b };
-                    }
-                });
-
-                // 5. Lists
+                // --- 6. LISTS ---
                 const faves = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => a.scores[mIdx] - b.scores[mIdx]).slice(0, 5);
                 const least = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => b.scores[mIdx] - a.scores[mIdx]).slice(0, 5);
 
@@ -160,11 +194,9 @@
                     <div class="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 class="text-3xl font-bold uppercase italic font-header">${m.n}</h2>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${alignLabel}</span>
-                                <div class="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
-                                    <div class="h-full ${alignColor}" style="width: ${(contrarianScore/50)*100}%"></div>
-                                </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[9px] font-bold uppercase text-blue-300 tracking-wider">${popLabel}</span>
+                                <span class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[9px] font-bold uppercase text-amber-300 tracking-wider">${spanLabel}</span>
                             </div>
                         </div>
                         <div class="flex gap-2">
@@ -219,27 +251,23 @@
                             </div>
 
                             <div>
-                                <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b pb-2">Hot Takes</h3>
-                                <div class="space-y-3">
-                                    <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg">
-                                        <div>
-                                            <span class="text-[9px] font-bold text-blue-600 uppercase">Underrated Gem</span>
-                                            <p class="font-bold text-xs text-slate-900 mt-0.5">${biggestLove.book ? biggestLove.book.title : '-'}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-xs font-bold text-slate-900">#${biggestLove.book ? biggestLove.book.scores[mIdx] : '-'}</div>
-                                            <div class="text-[8px] font-bold text-slate-400">vs Consensus #${biggestLove.book ? biggestLove.book.rank : '-'}</div>
-                                        </div>
+                                <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b pb-2">Alliances</h3>
+                                <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg">
+                                    <div>
+                                        <span class="tag-base tag-purple mb-1 inline-block">Taste Twin</span>
+                                        <p class="font-bold text-xs text-slate-900 mt-0.5">Loves ${bestAlly.name}'s Picks</p>
                                     </div>
-                                    <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg">
-                                        <div>
-                                            <span class="text-[9px] font-bold text-orange-600 uppercase">Overrated Dud</span>
-                                            <p class="font-bold text-xs text-slate-900 mt-0.5">${biggestHate.book ? biggestHate.book.title : '-'}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-xs font-bold text-slate-900">#${biggestHate.book ? biggestHate.book.scores[mIdx] : '-'}</div>
-                                            <div class="text-[8px] font-bold text-slate-400">vs Consensus #${biggestHate.book ? biggestHate.book.rank : '-'}</div>
-                                        </div>
+                                    <div class="text-right">
+                                        <div class="text-xs font-bold text-slate-900">Avg #${Math.round(bestAlly.score)}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg mt-2">
+                                    <div>
+                                        <span class="tag-base tag-amber mb-1 inline-block">Nemesis</span>
+                                        <p class="font-bold text-xs text-slate-900 mt-0.5">Hates ${worstEnemy.name}'s Picks</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xs font-bold text-slate-900">Avg #${Math.round(worstEnemy.score)}</div>
                                     </div>
                                 </div>
                             </div>
