@@ -14,18 +14,18 @@
         .font-header { font-family: 'Space Grotesk', sans-serif; }
         
         .member-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .stat-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; text-align: center; }
-        .stat-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
-        .stat-value { font-size: 1.125rem; font-weight: 900; color: #0f172a; font-family: 'Space Grotesk', sans-serif; }
         
-        .book-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 0.5rem; transition: background 0.2s; cursor: pointer; }
-        .book-row:hover { background-color: #f1f5f9; }
-        .rank-circle { width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; }
+        /* Stats */
+        .stat-pill { background: #f8fafc; padding: 0.5rem 1rem; border-radius: 0.5rem; text-align: center; border: 1px solid #e2e8f0; }
+        .stat-label { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; }
+        .stat-val { font-size: 1rem; font-weight: 900; color: #0f172a; font-family: 'Space Grotesk', sans-serif; }
+
+        /* Badges & Pills */
+        .tag-love { background: #dcfce7; color: #166534; font-weight: 800; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .tag-hate { background: #fee2e2; color: #991b1b; font-weight: 800; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         
-        /* Badges */
-        .badge-green { background: #dcfce7; color: #166534; }
-        .badge-red { background: #fee2e2; color: #991b1b; }
-        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .maverick-bar { height: 4px; border-radius: 2px; background: #e2e8f0; overflow: hidden; margin-top: 4px; }
+        .maverick-fill { height: 100%; background: #2563eb; }
     </style>
 </head>
 <body>
@@ -40,7 +40,7 @@
     <main class="max-w-5xl mx-auto px-6 py-8">
         <div id="loading" class="text-center py-20">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p class="text-xs font-bold uppercase text-slate-400">Crunching the numbers...</p>
+            <p class="text-xs font-bold uppercase text-slate-400">Analyzing reading habits...</p>
         </div>
         
         <div id="content" class="hidden">
@@ -74,7 +74,7 @@
                         title: (c[1]||"").replace(/"/g,""),
                         author: (c[2]||"").replace(/"/g,""),
                         rank: hasRank ? parseInt(rRaw) : 999,
-                        img: `covers/${parseInt(c[0])||(i+1)}.jpg`,
+                        genre: (c[17]||"Other").replace(/"/g,"").trim(),
                         selector: (c[16]||"").replace(/"/g,""),
                         scores: [parseInt(c[3])||999, parseInt(c[4])||999, parseInt(c[5])||999, parseInt(c[6])||999]
                     };
@@ -92,24 +92,54 @@
             const ranked = allData.filter(b => b.rank !== 999);
 
             container.innerHTML = members.map((m, mIdx) => {
-                // 1. Calculate Contributions (Picks)
+                // 1. Selector Stats
                 const myPicks = ranked.filter(b => b.selector.toLowerCase().includes(m.n.toLowerCase()));
                 myPicks.sort((a,b) => a.rank - b.rank);
-                
-                const bestPick = myPicks.length ? myPicks[0] : null;
-                const worstPick = myPicks.length ? myPicks[myPicks.length - 1] : null;
+                const bestPick = myPicks[0];
+                const worstPick = myPicks[myPicks.length - 1];
                 const avgPickRank = myPicks.length ? Math.round(myPicks.reduce((a,b)=>a+b.rank,0)/myPicks.length) : '-';
 
-                // 2. Calculate Grading Style (Avg Score Given)
-                const myScores = ranked.map(b => b.scores[mIdx]).filter(s => s !== 999);
-                const avgScoreGiven = myScores.length ? Math.round(myScores.reduce((a,b)=>a+b,0)/myScores.length) : '-';
+                // 2. "Maverick Score" (Alignment)
+                // Avg distance from consensus. 0 = Perfect Agreement. High = Contrarian.
+                let totalDev = 0, devCount = 0;
+                ranked.forEach(b => {
+                    if(b.scores[mIdx] !== 999) {
+                        totalDev += Math.abs(b.scores[mIdx] - b.rank);
+                        devCount++;
+                    }
+                });
+                const maverickScore = devCount ? Math.round(totalDev / devCount) : 0;
+                
+                // Maverick Description
+                let mavLabel = "The Anchor"; // Low deviation
+                let mavWidth = "20%";
+                let mavColor = "bg-blue-600";
+                
+                if (maverickScore > 25) { mavLabel = "The Wildcard"; mavWidth = "90%"; mavColor = "bg-purple-600"; }
+                else if (maverickScore > 15) { mavLabel = "Independent"; mavWidth = "60%"; mavColor = "bg-indigo-500"; }
 
-                // 3. Find Contrarian Opinions
-                // "Underrated" = I ranked it #5, Group ranked it #50 (Diff = 45)
-                // "Overrated" = I ranked it #50, Group ranked it #5 (Diff = -45)
+                // 3. Genre Bias
+                // Group books by genre -> calculate their avg rank given
+                const genreMap = {};
+                ranked.forEach(b => {
+                    if(b.scores[mIdx] === 999) return;
+                    if(!genreMap[b.genre]) genreMap[b.genre] = { sum: 0, count: 0 };
+                    genreMap[b.genre].sum += b.scores[mIdx];
+                    genreMap[b.genre].count++;
+                });
+                
+                const genreStats = Object.keys(genreMap).map(g => {
+                    return { g, avg: Math.round(genreMap[g].sum / genreMap[g].count), count: genreMap[g].count };
+                }).filter(x => x.count >= 2); // Only count genres with at least 2 books to reduce noise
+
+                genreStats.sort((a,b) => a.avg - b.avg); // Lowest avg = Favorite
+                
+                const favGenre = genreStats.length ? genreStats[0] : { g: '-', avg: '-' };
+                const hateGenre = genreStats.length ? genreStats[genreStats.length - 1] : { g: '-', avg: '-' };
+
+                // 4. Hot Takes
                 let biggestLove = { diff: -999, book: null };
                 let biggestHate = { diff: 999, book: null };
-
                 ranked.forEach(b => {
                     const myScore = b.scores[mIdx];
                     if (myScore !== 999) {
@@ -119,7 +149,7 @@
                     }
                 });
 
-                // 4. Top/Bottom 5
+                // 5. Lists
                 const faves = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => a.scores[mIdx] - b.scores[mIdx]).slice(0, 5);
                 const least = allData.filter(b => b.scores[mIdx] !== 999).sort((a,b) => b.scores[mIdx] - a.scores[mIdx]).slice(0, 5);
 
@@ -128,18 +158,21 @@
                     <div class="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 class="text-3xl font-bold uppercase italic font-header">${m.n}</h2>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Member Profile
-                            </p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${mavLabel}</span>
+                                <div class="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="h-full ${mavColor}" style="width: ${mavWidth}"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="flex gap-2">
-                            <div class="bg-slate-800 px-4 py-2 rounded-lg text-center">
-                                <div class="text-[10px] font-bold text-slate-400 uppercase">Avg Pick</div>
-                                <div class="text-xl font-bold">#${avgPickRank}</div>
+                            <div class="stat-pill bg-slate-800 border-slate-700">
+                                <div class="stat-label text-slate-400">Avg Pick Rank</div>
+                                <div class="stat-val text-white">#${avgPickRank}</div>
                             </div>
-                            <div class="bg-slate-800 px-4 py-2 rounded-lg text-center">
-                                <div class="text-[10px] font-bold text-slate-400 uppercase">Avg Given</div>
-                                <div class="text-xl font-bold">#${avgScoreGiven}</div>
+                            <div class="stat-pill bg-slate-800 border-slate-700">
+                                <div class="stat-label text-slate-400">Consensus Gap</div>
+                                <div class="stat-val text-white">${maverickScore}</div>
                             </div>
                         </div>
                     </div>
@@ -150,22 +183,32 @@
                             
                             <div>
                                 <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b pb-2">Legacy</h3>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="bg-green-50 border border-green-100 rounded-xl p-4 cursor-pointer hover:bg-green-100 transition" onclick="showBook('${bestPick?.title}', ${bestPick?.rank})">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <span class="text-lg">👑</span>
-                                            <span class="text-[9px] font-bold uppercase text-green-800">Best Pick</span>
-                                        </div>
-                                        <p class="font-bold text-sm leading-tight text-slate-900 line-clamp-2">${bestPick ? bestPick.title : '-'}</p>
-                                        <p class="text-[10px] font-bold text-green-600 mt-1">Ranked #${bestPick ? bestPick.rank : '-'}</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-green-400 transition group" onclick="showBook('${bestPick?.title}', ${bestPick?.rank})">
+                                        <div class="text-[9px] font-bold uppercase text-green-600 mb-1 flex items-center gap-1">👑 Best Pick</div>
+                                        <p class="font-bold text-xs leading-tight text-slate-900 line-clamp-2 group-hover:text-green-700">${bestPick ? bestPick.title : '-'}</p>
+                                        <p class="text-[9px] font-bold text-slate-400 mt-1">#${bestPick ? bestPick.rank : '-'}</p>
                                     </div>
-                                    <div class="bg-red-50 border border-red-100 rounded-xl p-4 cursor-pointer hover:bg-red-100 transition" onclick="showBook('${worstPick?.title}', ${worstPick?.rank})">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <span class="text-lg">💀</span>
-                                            <span class="text-[9px] font-bold uppercase text-red-800">Worst Pick</span>
-                                        </div>
-                                        <p class="font-bold text-sm leading-tight text-slate-900 line-clamp-2">${worstPick ? worstPick.title : '-'}</p>
-                                        <p class="text-[10px] font-bold text-red-600 mt-1">Ranked #${worstPick ? worstPick.rank : '-'}</p>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-red-400 transition group" onclick="showBook('${worstPick?.title}', ${worstPick?.rank})">
+                                        <div class="text-[9px] font-bold uppercase text-red-600 mb-1 flex items-center gap-1">💀 Worst Pick</div>
+                                        <p class="font-bold text-xs leading-tight text-slate-900 line-clamp-2 group-hover:text-red-700">${worstPick ? worstPick.title : '-'}</p>
+                                        <p class="text-[9px] font-bold text-slate-400 mt-1">#${worstPick ? worstPick.rank : '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b pb-2">Taste Profile</h3>
+                                <div class="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex justify-between items-center">
+                                    <div class="text-center w-1/2 border-r border-slate-100">
+                                        <span class="tag-love mb-1 block w-fit mx-auto">Loves</span>
+                                        <div class="font-bold text-slate-900 text-sm">${favGenre.g}</div>
+                                        <div class="text-[9px] text-slate-400 font-bold">Avg Rank #${favGenre.avg}</div>
+                                    </div>
+                                    <div class="text-center w-1/2">
+                                        <span class="tag-hate mb-1 block w-fit mx-auto">Loathes</span>
+                                        <div class="font-bold text-slate-900 text-sm">${hateGenre.g}</div>
+                                        <div class="text-[9px] text-slate-400 font-bold">Avg Rank #${hateGenre.avg}</div>
                                     </div>
                                 </div>
                             </div>
@@ -173,31 +216,24 @@
                             <div>
                                 <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b pb-2">Hot Takes</h3>
                                 <div class="space-y-3">
-                                    <div class="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
+                                    <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg">
                                         <div>
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class="bg-blue-100 text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded uppercase">Hidden Gem</span>
-                                                <span class="text-[9px] text-slate-400 font-bold">They liked it way more</span>
-                                            </div>
-                                            <p class="font-bold text-sm text-slate-900">${biggestLove.book ? biggestLove.book.title : '-'}</p>
+                                            <span class="text-[9px] font-bold text-blue-600 uppercase">Underrated Gem</span>
+                                            <p class="font-bold text-xs text-slate-900 mt-0.5">${biggestLove.book ? biggestLove.book.title : '-'}</p>
                                         </div>
                                         <div class="text-right">
-                                            <div class="text-xs font-bold text-blue-600">#${biggestLove.book ? biggestLove.book.scores[mIdx] : '-'}</div>
-                                            <div class="text-[9px] text-slate-400">vs Group #${biggestLove.book ? biggestLove.book.rank : '-'}</div>
+                                            <div class="text-xs font-bold text-slate-900">#${biggestLove.book ? biggestLove.book.scores[mIdx] : '-'}</div>
+                                            <div class="text-[8px] font-bold text-slate-400">vs Consensus #${biggestLove.book ? biggestLove.book.rank : '-'}</div>
                                         </div>
                                     </div>
-
-                                    <div class="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
+                                    <div class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-lg">
                                         <div>
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class="bg-slate-200 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded uppercase">Overrated</span>
-                                                <span class="text-[9px] text-slate-400 font-bold">They hated it</span>
-                                            </div>
-                                            <p class="font-bold text-sm text-slate-900">${biggestHate.book ? biggestHate.book.title : '-'}</p>
+                                            <span class="text-[9px] font-bold text-orange-600 uppercase">Overrated Dud</span>
+                                            <p class="font-bold text-xs text-slate-900 mt-0.5">${biggestHate.book ? biggestHate.book.title : '-'}</p>
                                         </div>
                                         <div class="text-right">
                                             <div class="text-xs font-bold text-slate-900">#${biggestHate.book ? biggestHate.book.scores[mIdx] : '-'}</div>
-                                            <div class="text-[9px] text-slate-400">vs Group #${biggestHate.book ? biggestHate.book.rank : '-'}</div>
+                                            <div class="text-[8px] font-bold text-slate-400">vs Consensus #${biggestHate.book ? biggestHate.book.rank : '-'}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -213,8 +249,8 @@
                                         <div class="flex items-start gap-2">
                                             <span class="text-[10px] font-bold text-green-500 w-4 pt-0.5">${i+1}</span>
                                             <div class="min-w-0">
-                                                <p class="text-xs font-bold text-slate-900 truncate">${b.title}</p>
-                                                <p class="text-[9px] text-slate-400">Ranked #${b.rank}</p>
+                                                <p class="text-[10px] font-bold text-slate-900 truncate">${b.title}</p>
+                                                <p class="text-[8px] font-bold text-slate-400">#${b.scores[mIdx]}</p>
                                             </div>
                                         </div>
                                     `).join('')}
@@ -227,8 +263,8 @@
                                         <div class="flex items-start gap-2">
                                             <span class="text-[10px] font-bold text-red-500 w-4 pt-0.5">${i+1}</span>
                                             <div class="min-w-0">
-                                                <p class="text-xs font-bold text-slate-900 truncate">${b.title}</p>
-                                                <p class="text-[9px] text-slate-400">Ranked #${b.rank}</p>
+                                                <p class="text-[10px] font-bold text-slate-900 truncate">${b.title}</p>
+                                                <p class="text-[8px] font-bold text-slate-400">#${b.scores[mIdx]}</p>
                                             </div>
                                         </div>
                                     `).join('')}
